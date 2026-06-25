@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Багаж авах</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    display:flex;
+    min-height:100vh;
+    font-family:'Segoe UI',sans-serif;
+    background:#f4f6f9;
+}
+
+/* Sidebar */
+
+.sidebar{
+    width:280px;
+    background:#374B63;
+    color:white;
+    padding:20px;
+    box-shadow:2px 0 10px rgba(0,0,0,0.1);
+    flex-shrink:0;
+}
+
+.sidebar h2{
+    margin-bottom:25px;
+    text-align:center;
+}
+
+.menu-btn{
+    width:100%;
+    padding:15px;
+    margin-bottom:8px;
+
+    border:none;
+    border-radius:10px;
+
+    background:#4F6E91;
+    color:white;
+
+    font-size:18px;
+    font-weight:600;
+
+    text-align:left;
+    cursor:pointer;
+
+    transition:.3s;
+}
+
+.menu-btn:hover{
+    background:#5D83B3;
+}
+
+.back-btn{
+    width:100%;
+    padding:12px;
+    margin-bottom:20px;
+    border:none;
+    border-radius:10px;
+    background:rgba(255,255,255,.15);
+    color:white;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.back-btn:hover{
+    background:rgba(255,255,255,.3);
+}
+
+.submenu{
+    display:none;
+    margin-bottom:15px;
+}
+
+.submenu a{
+    display:block;
+
+    padding:12px 20px;
+    margin-top:4px;
+
+    text-decoration:none;
+    color:white;
+
+    background:#2E445D;
+    border-radius:8px;
+
+    transition:.3s;
+    cursor:pointer;
+}
+
+.submenu a:hover{
+    background:#5D83B3;
+}
+
+.submenu a.active{
+    background:#5D83B3;
+}
+
+/* Main Content */
+
+.content{
+    flex:1;
+    padding:40px;
+    overflow-y:auto;
+}
+
+/* Search */
+
+.search-box{
+    display:flex;
+    gap:10px;
+    margin-bottom:25px;
+}
+
+.search-box input{
+    flex:1;
+    padding:15px;
+    border:1px solid #d0d7de;
+    border-radius:10px;
+    font-size:16px;
+    outline:none;
+}
+
+.search-box input:focus{
+    border-color:#4F6E91;
+}
+
+.search-box button{
+    padding:15px 25px;
+    border:none;
+    border-radius:10px;
+    background:#4F6E91;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.search-box button:hover{
+    background:#5D83B3;
+}
+
+.info-card{
+    background:white;
+    padding:30px;
+    border-radius:15px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+.info-card h2{
+    margin-bottom:15px;
+    color:#374B63;
+}
+
+.info-card p{
+    color:#555;
+    line-height:1.7;
+}
+
+.loading-msg{
+    color:#888;
+    font-size:16px;
+    padding:20px 0;
+}
+
+/* Tool grid */
+
+.section-title{
+    color:#374B63;
+    font-size:1.6rem;
+    margin-bottom:20px;
+    font-weight:700;
+}
+
+.tool-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+    gap:20px;
+}
+
+.tool-card{
+    background:white;
+    border-radius:15px;
+    overflow:hidden;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    transition:.3s;
+    display:flex;
+    flex-direction:column;
+}
+
+.tool-card:hover{
+    transform:translateY(-5px);
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+}
+
+.tool-card .img-wrap{
+    width:100%;
+    height:160px;
+    background:#e9edf2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.tool-card .img-wrap img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.tool-card .img-wrap .no-img{
+    font-size:48px;
+    opacity:.3;
+}
+
+.tool-card .tool-name{
+    padding:15px 15px 5px;
+    font-weight:600;
+    color:#2E445D;
+    text-align:center;
+}
+
+.tool-card .tool-qty{
+    padding:0 15px;
+    font-size:13px;
+    color:#888;
+    text-align:center;
+}
+
+.tool-card .tool-qty.zero{
+    color:#b03a3a;
+    font-weight:600;
+}
+
+.tool-card .select-btn{
+    margin:10px 15px 15px;
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#4F6E91;
+    color:white;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.tool-card .select-btn:hover{
+    background:#5D83B3;
+}
+
+.tool-card .select-btn:disabled{
+    background:#ccc;
+    cursor:not-allowed;
+}
+
+/* Modal */
+
+.modal-overlay{
+    display:none;
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,.55);
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:20px;
+}
+
+.modal-overlay.show{
+    display:flex;
+}
+
+.modal-box{
+    background:white;
+    border-radius:20px;
+    max-width:700px;
+    width:100%;
+    overflow:hidden;
+    box-shadow:0 20px 50px rgba(0,0,0,.3);
+    display:flex;
+    flex-wrap:wrap;
+}
+
+.modal-img{
+    flex:1 1 280px;
+    min-height:280px;
+    background:#e9edf2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+}
+
+.modal-img img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.modal-img .no-img{
+    font-size:64px;
+    opacity:.3;
+}
+
+.modal-info{
+    flex:1 1 260px;
+    padding:30px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    position:relative;
+}
+
+.modal-close{
+    position:absolute;
+    top:15px;
+    right:20px;
+    background:none;
+    border:none;
+    font-size:24px;
+    cursor:pointer;
+    color:#888;
+}
+
+.modal-close:hover{
+    color:#333;
+}
+
+.modal-info h2{
+    color:#2E445D;
+    margin-bottom:15px;
+    font-size:1.8rem;
+}
+
+.modal-info .info-row{
+    margin-bottom:12px;
+    font-size:16px;
+    color:#444;
+}
+
+.modal-info .info-row b{
+    color:#374B63;
+}
+
+.modal-info .take-btn{
+    margin-top:20px;
+    padding:16px;
+    border:none;
+    border-radius:12px;
+    background:linear-gradient(135deg,#5D83B3,#4F6E91);
+    color:white;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.modal-info .take-btn:hover{
+    background:linear-gradient(135deg,#6d92c0,#5D83B3);
+    transform:translateY(-2px);
+}
+
+.modal-info .take-btn:disabled{
+    background:#ccc;
+    cursor:not-allowed;
+}
+
+/* Camera modal */
+
+.camera-overlay{
+    display:none;
+    position:fixed;
+    top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,.85);
+    align-items:center;
+    justify-content:center;
+    z-index:1100;
+    padding:20px;
+    flex-direction:column;
+}
+
+.camera-overlay.show{
+    display:flex;
+}
+
+.camera-overlay video,
+.camera-overlay canvas{
+    max-width:90vw;
+    max-height:65vh;
+    border-radius:15px;
+    background:#000;
+}
+
+.camera-overlay canvas{
+    display:none;
+}
+
+.camera-controls{
+    margin-top:20px;
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    justify-content:center;
+}
+
+.camera-controls button{
+    padding:14px 28px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.3s;
+}
+
+#btnCapture{
+    background:#4F6E91;
+    color:white;
+}
+#btnCapture:hover{
+    background:#5D83B3;
+}
+
+#btnRetake{
+    background:#888;
+    color:white;
+    display:none;
+}
+#btnRetake:hover{
+    background:#666;
+}
+
+#btnConfirm{
+    background:#2e8b57;
+    color:white;
+    display:none;
+}
+#btnConfirm:hover{
+    background:#3aa86a;
+}
+
+#btnConfirm:disabled{
+    background:#ccc;
+    cursor:not-allowed;
+}
+
+#btnCameraClose{
+    background:#b03a3a;
+    color:white;
+}
+#btnCameraClose:hover{
+    background:#c94545;
+}
+
+#btnSwitchCam{
+    background:#5D83B3;
+    color:white;
+}
+#btnSwitchCam:hover{
+    background:#6d92c0;
+}
+
+.camera-status{
+    color:white;
+    margin-top:15px;
+    font-size:15px;
+    text-align:center;
+    min-height:20px;
+}
+
+/* Tablet */
+
+@media(max-width:768px){
+
+    body{
+        flex-direction:column;
+    }
+
+    .sidebar{
+        width:100%;
+    }
+
+    .menu-btn{
+        font-size:16px;
+    }
+
+    .content{
+        padding:20px;
+    }
+
+    .search-box{
+        flex-direction:column;
+    }
+
+    .modal-box{
+        flex-direction:column;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <button class="back-btn" onclick="window.location.href='index.html'">← Буцах</button>
+
+    <h2>📦 БАГАЖ</h2>
+
+    <button class="menu-btn" onclick="toggleMenu('boxSubmenu')">
+        🗂️ Хайрцгаар
+    </button>
+
+    <div id="boxSubmenu" class="submenu"></div>
+
+    <button class="menu-btn" onclick="toggleMenu('typeSubmenu')">
+        🏷️ Ангилалаар
+    </button>
+
+    <div id="typeSubmenu" class="submenu"></div>
+
+</div>
+
+<div class="content">
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Багаж хайх...">
+        <button onclick="searchTools()">Хайх</button>
+    </div>
+
+    <div id="welcomeCard" class="info-card">
+        <h2>Тавтай морил</h2>
+        <p>
+            Зүүн талын цэснээс хайрцгаа сонгоно уу, эсвэл багаж хайна уу.
+        </p>
+    </div>
+
+    <div id="toolSection" style="display:none;">
+        <div class="section-title" id="toolSectionTitle">Багаж</div>
+        <div class="tool-grid" id="toolGrid"></div>
+    </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-box">
+        <div class="modal-img" id="modalImgWrap">
+            <img id="modalImg" src="" alt="" style="display:none;">
+            <div class="no-img" id="modalNoImg">🛠️</div>
+        </div>
+        <div class="modal-info">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <h2 id="modalName"></h2>
+            <div class="info-row"><b>Хайрцаг:</b> <span id="modalBox"></span></div>
+            <div class="info-row"><b>Боломжтой:</b> <span id="modalStatus"></span></div>
+            <button class="take-btn" id="modalTakeBtn" onclick="openCamera()">📷 Авах</button>
+        </div>
+    </div>
+</div>
+
+<!-- Camera Modal -->
+<div class="camera-overlay" id="cameraModal">
+    <video id="cameraVideo" autoplay playsinline></video>
+    <canvas id="cameraCanvas"></canvas>
+    <div class="camera-status" id="cameraStatus">Камер бэлдэж байна...</div>
+    <div class="camera-controls">
+        <button id="btnCapture" onclick="captureImage()">📸 Зураг авах</button>
+        <button id="btnRetake" onclick="retakeImage()">🔄 Дахин авах</button>
+        <button id="btnConfirm" onclick="confirmCapture()">✅ Хадгалах</button>
+        <button id="btnSwitchCam" onclick="switchCamera()">🔁 Камер сэлгэх</button>
+        <button id="btnCameraClose" onclick="closeCamera()">✕ Хаах</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+
+/* ---------- Sidebar submenu toggle ---------- */
+function toggleMenu(id){
+    const menu = document.getElementById(id);
+    menu.style.display = (menu.style.display === "block") ? "none" : "block";
+}
+
+/* ---------- Firestore-оос өгөгдөл ачаалах ---------- */
+let categoriesCache = [];   // [{id, name, description}]
+let typesCache = [];        // [{id, name}]
+let toolsCache = [];        // [{id, name, categoryId, typeId, imageUrl, totalQty, availableQty, consumable}]
+
+async function loadData(){
+    try{
+        const [catsSnap, typesSnap, toolsSnap] = await Promise.all([
+            db.collection("categories").orderBy("name").get(),
+            db.collection("types").orderBy("name").get(),
+            db.collection("tools").orderBy("name").get()
+        ]);
+
+        categoriesCache = [];
+        catsSnap.forEach(doc => categoriesCache.push({ id: doc.id, ...doc.data() }));
+
+        typesCache = [];
+        typesSnap.forEach(doc => typesCache.push({ id: doc.id, ...doc.data() }));
+
+        // "Хэрэгсэл" (consumable, буцаалт шаардлагагүй) гэж тэмдэглэгдсэн
+        // багажийг хэрэглэгчийн site-д ХАРУУЛАХГҮЙ — зөвхөн admin
+        // удирддаг тул эндээс шүүж хасна.
+        toolsCache = [];
+        toolsSnap.forEach(doc => {
+            const data = doc.data();
+            if(!data.consumable){
+                toolsCache.push({ id: doc.id, ...data });
+            }
+        });
+
+        renderBoxMenu();
+        renderTypeMenu();
+    }catch(err){
+        console.error("Өгөгдөл ачаалахад алдаа:", err);
+        document.getElementById('welcomeCard').innerHTML =
+            '<h2>⚠️ Алдаа гарлаа</h2><p>Өгөгдөл ачаалж чадсангүй. Сүлжээгээ шалгаад дахин оролдоорой.</p>';
+    }
+}
+
+function categoryName(categoryId){
+    const cat = categoriesCache.find(c => c.id === categoryId);
+    return cat ? cat.name : "Тодорхойгүй";
+}
+
+function typeName(typeId){
+    const type = typesCache.find(t => t.id === typeId);
+    return type ? type.name : "Тодорхойгүй";
+}
+
+/* Render sidebar submenu: one entry per category */
+function renderBoxMenu(){
+    const wrap = document.getElementById('boxSubmenu');
+    wrap.innerHTML = '';
+
+    if(categoriesCache.length === 0){
+        wrap.innerHTML = '<a style="cursor:default;opacity:.6;">Хайрцаг алга байна</a>';
+        return;
+    }
+
+    categoriesCache.forEach(cat => {
+        const a = document.createElement('a');
+        a.textContent = cat.name;
+        a.onclick = () => showCategory(cat.id);
+        wrap.appendChild(a);
+    });
+}
+
+/* Render sidebar submenu: one entry per type (ангилал) */
+function renderTypeMenu(){
+    const wrap = document.getElementById('typeSubmenu');
+    wrap.innerHTML = '';
+
+    if(typesCache.length === 0){
+        wrap.innerHTML = '<a style="cursor:default;opacity:.6;">Ангилал алга байна</a>';
+        return;
+    }
+
+    typesCache.forEach(type => {
+        const a = document.createElement('a');
+        a.textContent = type.name;
+        a.onclick = () => showType(type.id);
+        wrap.appendChild(a);
+    });
+}
+
+/* Show all tools belonging to one category/box */
+function showCategory(categoryId){
+    const cat = categoriesCache.find(c => c.id === categoryId);
+    if(!cat) return;
+
+    const items = toolsCache.filter(t => t.categoryId === categoryId);
+
+    document.getElementById('welcomeCard').style.display = 'none';
+    document.getElementById('toolSection').style.display = 'block';
+    document.getElementById('toolSectionTitle').textContent = `🗂️ ${cat.name}`;
+
+    renderToolGrid(items);
+}
+
+/* Show all tools belonging to one type (ангилал) */
+function showType(typeId){
+    const type = typesCache.find(t => t.id === typeId);
+    if(!type) return;
+
+    const items = toolsCache.filter(t => t.typeId === typeId);
+
+    document.getElementById('welcomeCard').style.display = 'none';
+    document.getElementById('toolSection').style.display = 'block';
+    document.getElementById('toolSectionTitle').textContent = `🏷️ ${type.name}`;
+
+    renderToolGrid(items);
+}
+
+function renderToolGrid(items){
+    const grid = document.getElementById('toolGrid');
+    grid.innerHTML = '';
+
+    if(items.length === 0){
+        grid.innerHTML = '<p class="loading-msg">Энэ хайрцагт багаж алга байна.</p>';
+        return;
+    }
+
+    items.forEach(tool => {
+        const available = tool.availableQty ?? 0;
+        const card = document.createElement('div');
+        card.className = 'tool-card';
+        card.innerHTML = `
+            <div class="img-wrap">
+                ${tool.imageUrl
+                    ? `<img src="${tool.imageUrl}" alt="${escapeHtml(tool.name)}">`
+                    : `<div class="no-img">🛠️</div>`}
+            </div>
+            <div class="tool-name">${escapeHtml(tool.name)}</div>
+            <div class="tool-qty ${available <= 0 ? 'zero' : ''}">Боломжтой: ${available} ширхэг</div>
+            <button class="select-btn" ${available <= 0 ? 'disabled' : ''}>
+                ${available <= 0 ? 'Дууссан' : 'Сонгох'}
+            </button>
+        `;
+        const btn = card.querySelector('.select-btn');
+        if(available > 0){
+            btn.onclick = () => openDetail(tool);
+        }
+        grid.appendChild(card);
+    });
+}
+
+function searchTools(){
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+    document.getElementById('welcomeCard').style.display = 'none';
+    document.getElementById('toolSection').style.display = 'block';
+
+    if(!q){
+        document.getElementById('toolSectionTitle').textContent = "Бүх багаж";
+        renderToolGrid(toolsCache);
+        return;
+    }
+
+    document.getElementById('toolSectionTitle').textContent = `🔍 Хайлтын үр дүн: "${q}"`;
+    const matches = toolsCache.filter(t => t.name.toLowerCase().includes(q));
+    renderToolGrid(matches);
+}
+
+function escapeHtml(str){
+    if(!str) return "";
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+/* ---------- Detail modal ---------- */
+let currentSelection = null; // the tool object from toolsCache
+
+function openDetail(tool){
+    currentSelection = tool;
+
+    const img = document.getElementById('modalImg');
+    const noImg = document.getElementById('modalNoImg');
+    if(tool.imageUrl){
+        img.src = tool.imageUrl;
+        img.style.display = 'block';
+        noImg.style.display = 'none';
+    }else{
+        img.style.display = 'none';
+        noImg.style.display = 'flex';
+    }
+
+    document.getElementById('modalName').textContent = tool.name;
+    document.getElementById('modalBox').textContent = categoryName(tool.categoryId);
+    document.getElementById('modalStatus').textContent = `${tool.availableQty ?? 0} ширхэг`;
+    document.getElementById('modalTakeBtn').disabled = (tool.availableQty ?? 0) <= 0;
+    document.getElementById('detailModal').classList.add('show');
+}
+
+function closeModal(){
+    document.getElementById('detailModal').classList.remove('show');
+}
+
+/* ---------- Camera ---------- */
+let cameraStream = null;
+let capturedBlob = null;
+let isSaving = false;
+let currentFacing = "user"; // "user" = урд тал, "environment" = арын тал
+
+async function openCamera(){
+    document.getElementById('cameraModal').classList.add('show');
+    document.getElementById('cameraStatus').textContent = "Камер бэлдэж байна...";
+    document.getElementById('btnCapture').style.display = 'inline-block';
+    document.getElementById('btnRetake').style.display = 'none';
+    document.getElementById('btnConfirm').style.display = 'none';
+
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    video.style.display = 'block';
+    canvas.style.display = 'none';
+
+    currentFacing = "user"; // Хэрэглэгчийн нүүр царайг зурагдахын тулд эхэлж УРД талын камераар нээнэ
+    await startCameraStream();
+}
+
+async function startCameraStream(){
+    const video = document.getElementById('cameraVideo');
+    try{
+        if(cameraStream){
+            cameraStream.getTracks().forEach(t => t.stop());
+        }
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: currentFacing },
+            audio: false
+        });
+        video.srcObject = cameraStream;
+        document.getElementById('cameraStatus').textContent = "Багажтайгаа сэлфи зураг ав";
+    }catch(err){
+        document.getElementById('cameraStatus').textContent =
+            "⚠️ Камерт хандах боломжгүй байна. Зөвшөөрөл олгосон эсэхээ шалгана уу.";
+        console.error(err);
+    }
+}
+
+async function switchCamera(){
+    currentFacing = (currentFacing === "user") ? "environment" : "user";
+    document.getElementById('cameraStatus').textContent = "Камер сэлгэж байна...";
+    await startCameraStream();
+}
+
+function captureImage(){
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+
+    // Зургийг хэт том биш (max 800px) болгож compress хийнэ
+    const maxWidth = 800;
+    let w = video.videoWidth, h = video.videoHeight;
+    if(w > maxWidth){
+        h = Math.round(h * maxWidth / w);
+        w = maxWidth;
+    }
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, w, h);
+
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+
+    canvas.toBlob(blob => {
+        capturedBlob = blob;
+    }, 'image/jpeg', 0.75);
+
+    document.getElementById('btnCapture').style.display = 'none';
+    document.getElementById('btnRetake').style.display = 'inline-block';
+    document.getElementById('btnConfirm').style.display = 'inline-block';
+    document.getElementById('cameraStatus').textContent = "Зураг авлаа. Зөв бол хадгал, эсвэл дахин ав.";
+}
+
+function retakeImage(){
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+
+    video.style.display = 'block';
+    canvas.style.display = 'none';
+    capturedBlob = null;
+
+    document.getElementById('btnCapture').style.display = 'inline-block';
+    document.getElementById('btnRetake').style.display = 'none';
+    document.getElementById('btnConfirm').style.display = 'none';
+    document.getElementById('cameraStatus').textContent = "Багажтайгаа сэлфи зураг ав";
+}
+
+async function confirmCapture(){
+    if(!capturedBlob || !currentSelection || isSaving){
+        return;
+    }
+    isSaving = true;
+    document.getElementById('btnConfirm').disabled = true;
+    document.getElementById('cameraStatus').textContent = "Хадгалж байна...";
+
+    const tool = currentSelection;
+
+    try{
+        // 1. Авсан үеийн зургийг Storage-д хадгална
+        const filename = `pickups/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const ref = storage.ref(filename);
+        await ref.put(capturedBlob);
+        const pickupPhotoUrl = await ref.getDownloadURL();
+
+        // 2. Firestore transaction: тоог хасаж, бичлэг үүсгэнэ
+        const toolRef = db.collection("tools").doc(tool.id);
+
+        await db.runTransaction(async (transaction) => {
+            const toolDoc = await transaction.get(toolRef);
+            const available = toolDoc.data().availableQty ?? 0;
+
+            if(available <= 0){
+                throw new Error("Энэ багаж дууссан байна");
+            }
+
+            transaction.update(toolRef, { availableQty: available - 1 });
+
+            const txRef = db.collection("transactions").doc();
+            transaction.set(txRef, {
+                toolId: tool.id,
+                toolName: tool.name,
+                categoryId: tool.categoryId,
+                catalogImageUrl: tool.imageUrl || null,
+                pickupPhotoUrl: pickupPhotoUrl,
+                returnPhotoUrl: null,
+                userName: "",
+                status: "borrowed",
+                type: "borrow",
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        document.getElementById('cameraStatus').textContent = "✅ Амжилттай авлаа!";
+
+        // Local cache-ийг шинэчилнэ (дараагийн харагдалт зөв байхын тулд)
+        tool.availableQty = (tool.availableQty ?? 1) - 1;
+
+        setTimeout(() => {
+            closeCamera();
+            closeModal();
+            // Дэлгэцийг шинэчилнэ
+            if(tool.categoryId){
+                showCategory(tool.categoryId);
+            }
+        }, 900);
+
+    }catch(err){
+        console.error("Хадгалахад алдаа:", err);
+        document.getElementById('cameraStatus').textContent =
+            "⚠️ Алдаа гарлаа: " + err.message;
+    }finally{
+        isSaving = false;
+        document.getElementById('btnConfirm').disabled = false;
+    }
+}
+
+function closeCamera(){
+    if(cameraStream){
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    capturedBlob = null;
+    document.getElementById('cameraModal').classList.remove('show');
+}
+
+/* close modals on outside click */
+document.getElementById('detailModal').addEventListener('click', (e) => {
+    if(e.target.id === 'detailModal') closeModal();
+});
+
+/* ---------- Auth шалгалт ---------- */
+auth.onAuthStateChanged(user => {
+    if(!user){
+        window.location.href = "index.html";
+    }else{
+        loadData();
+    }
+});
+
+</script>
+
+</body>
+</html>

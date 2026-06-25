@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Багажийн удирдлага</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family:'Segoe UI',sans-serif;
+
+    background:linear-gradient(
+        135deg,
+        #4F6E91,
+        #3D5877,
+        #2E445D
+    );
+
+    overflow:hidden;
+}
+
+.container{
+    width:90%;
+    max-width:1000px;
+    text-align:center;
+}
+
+.title{
+    color:white;
+    font-size:3rem;
+    margin-bottom:60px;
+    font-weight:700;
+}
+
+.button-group{
+    display:flex;
+    justify-content:center;
+    gap:40px;
+    flex-wrap:wrap;
+}
+
+.nav-btn{
+    width:350px;
+    height:180px;
+
+    border:none;
+    border-radius:25px;
+
+    cursor:pointer;
+
+    font-size:2.2rem;
+    font-weight:bold;
+    color:white;
+
+    transition:0.3s;
+
+    box-shadow:
+        0 10px 25px rgba(0,0,0,.25);
+}
+
+#btnAvah{
+    background:linear-gradient(
+        135deg,
+        #5D83B3,
+        #4F6E91
+    );
+}
+
+#btnOgoh{
+    background:linear-gradient(
+        135deg,
+        #374B63,
+        #2E445D
+    );
+}
+
+.nav-btn:hover{
+    transform:translateY(-8px);
+    box-shadow:
+        0 20px 40px rgba(0,0,0,.35);
+}
+
+.nav-btn:active{
+    transform:scale(.93);
+}
+
+.panel{
+    margin-top:50px;
+
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(12px);
+
+    border:1px solid rgba(255,255,255,.15);
+
+    border-radius:25px;
+
+    padding:25px;
+    color:white;
+}
+
+.panel h2{
+    margin-bottom:10px;
+}
+
+/* ---------- Login (PIN) screen ---------- */
+.login-card{
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:25px;
+    padding:50px 40px;
+    max-width:380px;
+    margin:0 auto;
+}
+
+.login-card .lock-icon{
+    font-size:48px;
+    margin-bottom:15px;
+}
+
+.login-card h2{
+    color:white;
+    margin-bottom:8px;
+    font-size:1.8rem;
+}
+
+.login-card p{
+    color:rgba(255,255,255,.75);
+    margin-bottom:25px;
+    font-size:15px;
+}
+
+.pin-input{
+    width:100%;
+    padding:18px;
+    font-size:28px;
+    text-align:center;
+    letter-spacing:10px;
+    border:none;
+    border-radius:15px;
+    outline:none;
+    background:rgba(255,255,255,.9);
+    color:#2E445D;
+    font-weight:700;
+}
+
+.pin-input:focus{
+    background:white;
+}
+
+.login-btn{
+    width:100%;
+    margin-top:20px;
+    padding:16px;
+    border:none;
+    border-radius:15px;
+    background:linear-gradient(135deg,#5D83B3,#4F6E91);
+    color:white;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.login-btn:hover{
+    background:linear-gradient(135deg,#6d92c0,#5D83B3);
+}
+
+.login-btn:disabled{
+    opacity:.6;
+    cursor:not-allowed;
+}
+
+.login-error{
+    margin-top:15px;
+    color:#ffb4b4;
+    font-size:14px;
+    min-height:18px;
+}
+
+@media(max-width:768px){
+
+    .title{
+        font-size:2rem;
+    }
+
+    .button-group{
+        flex-direction:column;
+        align-items:center;
+    }
+
+    .nav-btn{
+        width:100%;
+        max-width:350px;
+        height:120px;
+        font-size:1.6rem;
+    }
+
+    .login-card{
+        padding:40px 25px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ---------- Login (PIN) screen ---------- -->
+<div class="container" id="loginScreen">
+    <div class="login-card">
+        <div class="lock-icon">🔒</div>
+        <h2>Тавтай морил</h2>
+        <p>Нэвтрэхийн тулд кодоо оруулна уу</p>
+
+        <input type="password" inputmode="numeric" id="pinInput" class="pin-input"
+               maxlength="6" placeholder="••••" autocomplete="off">
+
+        <button class="login-btn" id="loginBtn" onclick="doLogin()">Нэвтрэх</button>
+        <div class="login-error" id="loginError"></div>
+    </div>
+</div>
+
+<!-- ---------- Main menu (Авах/Өгөх) ---------- -->
+<div class="container" id="menuScreen" style="display:none;">
+
+    <div class="button-group">
+
+        <button id="btnAvah" class="nav-btn">
+            🔧<br>
+            Багаж авах
+        </button>
+
+        <button id="btnOgoh" class="nav-btn">
+            📦<br>
+            Багаж өгөх
+        </button>
+
+    </div>
+
+    <div class="panel">
+        <h2>Тавтай морил</h2>
+        <p>
+            Багаж авах эсвэл буцаан өгөх үйлдлээ сонгоно уу!
+        </p>
+    </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+
+const loginScreen = document.getElementById('loginScreen');
+const menuScreen = document.getElementById('menuScreen');
+const pinInput = document.getElementById('pinInput');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+// Session аль хэдийн байгаа эсэхийг шалгана. Байгаа бол шууд menu
+// дэлгэц рүү шилжинэ, дахин код асуухгүй.
+auth.onAuthStateChanged(user => {
+    if(user){
+        loginScreen.style.display = 'none';
+        menuScreen.style.display = 'block';
+    }else{
+        loginScreen.style.display = 'block';
+        menuScreen.style.display = 'none';
+    }
+});
+
+async function doLogin(){
+    const pin = pinInput.value.trim();
+    if(!pin){
+        loginError.textContent = "Кодоо оруулна уу";
+        return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Шалгаж байна...";
+    loginError.textContent = "";
+
+    try{
+        await auth.signInWithEmailAndPassword(HEREGLEGCH_EMAIL, pin);
+        // onAuthStateChanged автоматаар menu screen рүү шилжүүлнэ
+    }catch(err){
+        let msg = "Алдаа гарлаа. Дахин оролдоорой.";
+        if(err.code === "auth/wrong-password" || err.code === "auth/invalid-credential"){
+            msg = "Код буруу байна.";
+        }
+        loginError.textContent = msg;
+        pinInput.value = "";
+        pinInput.focus();
+    }finally{
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Нэвтрэх";
+    }
+}
+
+// Enter товч дарвал шууд нэвтэрнэ
+pinInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter') doLogin();
+});
+
+// Хуудас ачаалагдсаны дараа PIN талбар дээр анхаарал автоматаар очно
+pinInput.focus();
+
+document.getElementById("btnAvah").onclick = () => {
+    window.location.href = "avah.html";
+};
+
+document.getElementById("btnOgoh").onclick = () => {
+    window.location.href = "ogoh.html";
+};
+</script>
+
+</body>
+</html>
