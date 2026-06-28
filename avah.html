@@ -413,6 +413,12 @@ body{
     display:none;
 }
 
+#faceOverlay{
+    display:block !important;
+    max-width:90vw;
+    max-height:65vh;
+}
+
 .camera-controls{
     margin-top:20px;
     display:flex;
@@ -581,11 +587,14 @@ body{
 
 <!-- Camera Modal -->
 <div class="camera-overlay" id="cameraModal">
-    <video id="cameraVideo" autoplay playsinline></video>
+    <div style="position:relative;">
+        <video id="cameraVideo" autoplay playsinline></video>
+        <canvas id="faceOverlay" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+    </div>
     <canvas id="cameraCanvas"></canvas>
     <div class="camera-status" id="cameraStatus">Камер бэлдэж байна...</div>
     <div class="camera-controls">
-        <button id="btnCapture" onclick="captureImage()">📸 Зураг авах</button>
+        <button id="btnCapture" onclick="captureImage()" disabled>📸 Зураг авах</button>
         <button id="btnRetake" onclick="retakeImage()">🔄 Дахин авах</button>
         <button id="btnConfirm" onclick="confirmCapture()">✅ Хадгалах</button>
         <button id="btnSwitchCam" onclick="switchCamera()">🔁 Камер сэлгэх</button>
@@ -593,6 +602,7 @@ body{
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -917,10 +927,105 @@ let capturedBlob = null;
 let isSaving = false;
 let currentFacing = "user"; // "user" = урд тал, "environment" = арын тал
 
+// ---------- Нүүр царай таних (face-api.js) ----------
+let faceModelsLoaded = false;
+let faceCheckInterval = null;
+let faceDetectedOk = false;
+
+async function ensureFaceModelsLoaded(){
+    if(faceModelsLoaded) return;
+    const MODEL_URL = "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights";
+    document.getElementById('cameraStatus').textContent = "Бэлдэж байна...";
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    faceModelsLoaded = true;
+}
+
+function startFaceCheckLoop(){
+    const video = document.getElementById('cameraVideo');
+    const overlay = document.getElementById('faceOverlay');
+
+    if(faceCheckInterval) clearInterval(faceCheckInterval);
+
+    faceCheckInterval = setInterval(async () => {
+        if(!video.videoWidth || !video.videoHeight) return;
+
+        overlay.width = video.clientWidth;
+        overlay.height = video.clientHeight;
+        const ctx = overlay.getContext('2d');
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+        // Чиглэгч oval зураг (хэрэглэгчид нүүрээ хаана байрлуулахыг харуулна)
+        const ovalW = overlay.width * 0.55;
+        const ovalH = overlay.height * 0.7;
+        const ovalX = overlay.width / 2;
+        const ovalY = overlay.height / 2;
+
+        let detection = null;
+        try{
+            detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+        }catch(e){
+            // detection алдаа гарвал зүгээр алгасна
+        }
+
+        const scaleX = overlay.width / video.videoWidth;
+        const scaleY = overlay.height / video.videoHeight;
+
+        let isInsideOval = false;
+        if(detection){
+            const box = detection.box;
+            const centerX = (box.x + box.width / 2) * scaleX;
+            const centerY = (box.y + box.height / 2) * scaleY;
+            const faceW = box.width * scaleX;
+            const faceH = box.height * scaleY;
+
+            // Нүүр oval-ийн дотор, мөн хангалттай хэмжээтэй эсэхийг шалгана
+            const dx = (centerX - ovalX) / (ovalW / 2);
+            const dy = (centerY - ovalY) / (ovalH / 2);
+            const withinOval = (dx * dx + dy * dy) <= 1.0;
+            const sizeOk = faceW >= ovalW * 0.45 && faceH >= ovalH * 0.45;
+            isInsideOval = withinOval && sizeOk;
+        }
+
+        faceDetectedOk = isInsideOval;
+
+        // Oval зурна — ногоон (зөв) эсвэл цагаан (хүлээгдэж буй)
+        ctx.strokeStyle = isInsideOval ? "#3ddc84" : "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(ovalX, ovalY, ovalW / 2, ovalH / 2, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        const captureBtn = document.getElementById('btnCapture');
+        const statusEl = document.getElementById('cameraStatus');
+        if(captureBtn.style.display !== 'none'){ // зөвхөн capture үе шатанд
+            if(isInsideOval){
+                captureBtn.disabled = false;
+                statusEl.textContent = "✅ Бэлэн байна — Зураг ав";
+            }else{
+                captureBtn.disabled = true;
+                statusEl.textContent = detection
+                    ? "Нүүрээ oval хүрээний дунд төвлөрүүлнэ үү"
+                    : "Нүүрээ камерт харуулна уу";
+            }
+        }
+    }, 300);
+}
+
+function stopFaceCheckLoop(){
+    if(faceCheckInterval){
+        clearInterval(faceCheckInterval);
+        faceCheckInterval = null;
+    }
+    const overlay = document.getElementById('faceOverlay');
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+}
+
 async function openCamera(){
     document.getElementById('cameraModal').classList.add('show');
     document.getElementById('cameraStatus').textContent = "Камер бэлдэж байна...";
     document.getElementById('btnCapture').style.display = 'inline-block';
+    document.getElementById('btnCapture').disabled = true;
     document.getElementById('btnRetake').style.display = 'none';
     document.getElementById('btnConfirm').style.display = 'none';
 
@@ -931,6 +1036,8 @@ async function openCamera(){
 
     currentFacing = "user"; // Хэрэглэгчийн нүүр царайг зурагдахын тулд эхэлж УРД талын камераар нээнэ
     await startCameraStream();
+    await ensureFaceModelsLoaded();
+    startFaceCheckLoop();
 }
 
 async function startCameraStream(){
@@ -944,7 +1051,7 @@ async function startCameraStream(){
             audio: false
         });
         video.srcObject = cameraStream;
-        document.getElementById('cameraStatus').textContent = "Багажтайгаа сэлфи зураг ав";
+        document.getElementById('cameraStatus').textContent = "Нүүрээ камерт харуулна уу";
     }catch(err){
         document.getElementById('cameraStatus').textContent =
             "⚠️ Камерт хандах боломжгүй байна. Зөвшөөрөл олгосон эсэхээ шалгана уу.";
@@ -959,6 +1066,8 @@ async function switchCamera(){
 }
 
 function captureImage(){
+    if(!faceDetectedOk) return; // Нүүр зөв байрлалд биш бол зураг авахгүй
+
     const video = document.getElementById('cameraVideo');
     const canvas = document.getElementById('cameraCanvas');
 
@@ -976,6 +1085,7 @@ function captureImage(){
 
     video.style.display = 'none';
     canvas.style.display = 'block';
+    stopFaceCheckLoop();
 
     canvas.toBlob(blob => {
         capturedBlob = blob;
@@ -996,9 +1106,11 @@ function retakeImage(){
     capturedBlob = null;
 
     document.getElementById('btnCapture').style.display = 'inline-block';
+    document.getElementById('btnCapture').disabled = true;
     document.getElementById('btnRetake').style.display = 'none';
     document.getElementById('btnConfirm').style.display = 'none';
-    document.getElementById('cameraStatus').textContent = "Багажтайгаа сэлфи зураг ав";
+    document.getElementById('cameraStatus').textContent = "Нүүрээ камерт харуулна уу";
+    startFaceCheckLoop();
 }
 
 async function confirmCapture(){
@@ -1112,6 +1224,7 @@ function closeCamera(){
         cameraStream = null;
     }
     capturedBlob = null;
+    stopFaceCheckLoop();
     document.getElementById('cameraModal').classList.remove('show');
 }
 
