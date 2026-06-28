@@ -154,6 +154,11 @@ body{
     box-shadow:0 2px 10px rgba(0,0,0,.08);
 }
 
+.history-card.selected{
+    border:3px solid #374B63;
+    box-shadow:0 0 0 3px rgba(55,75,99,.25);
+}
+
 .history-images{
     display:flex;
 }
@@ -508,25 +513,19 @@ body{
 
 </div>
 
+<!-- Сонгогдсон багажийн floating bar -->
+<div id="returnBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#374B63; color:white; padding:16px 24px; align-items:center; justify-content:space-between; box-shadow:0 -4px 20px rgba(0,0,0,.2); z-index:500;">
+    <div id="returnCount" style="font-weight:600; font-size:16px;">0 багаж сонгогдсон</div>
+    <button onclick="openCartDetail()" style="padding:12px 28px; border:none; border-radius:10px; background:linear-gradient(135deg,#5D83B3,#4F6E91); color:white; font-size:16px; font-weight:700; cursor:pointer;">📷 Буцаах</button>
+</div>
+
 <div class="modal-overlay" id="detailModal">
-    <div class="modal-box">
-        <div class="modal-img" id="modalImgWrap">
-            <div class="img-half">
-                <img id="modalCatalogImg" src="" alt="" style="display:none;">
-                <div class="no-img" id="modalCatalogNoImg">🛠️</div>
-                <div class="img-label">Багаж</div>
-            </div>
-            <div class="img-half">
-                <img id="modalImg" src="" alt="">
-                <div class="img-label">Авсан үед</div>
-            </div>
-        </div>
-        <div class="modal-info">
+    <div class="modal-box" style="flex-direction:column; max-width:480px;">
+        <div class="modal-info" style="padding:24px;">
             <button class="modal-close" onclick="closeModal()">✕</button>
-            <h2 id="modalName"></h2>
-            <div class="info-row"><b>Хайрцаг:</b> <span id="modalBox"></span></div>
-            <div class="info-row" id="modalDateRow"><b>Авсан огноо:</b> <span id="modalDate"></span></div>
-            <button class="take-btn" id="modalActionBtn" onclick="openCamera()">📷 Өгөх</button>
+            <h2 style="margin-bottom:16px;">Буцаах багажууд</h2>
+            <div id="cartList" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; margin-bottom:10px;"></div>
+            <button class="take-btn" id="modalActionBtn" onclick="openCamera()">📷 Зураг авч баталгаажуулах</button>
         </div>
     </div>
 </div>
@@ -601,6 +600,36 @@ async function loadTakenTools(){
     }
 }
 
+/* ---------- Олон багаж сонгох (буцаах сагс) ---------- */
+let selectedReturnItems = []; // [rec, rec, ...]
+
+function isReturnSelected(txId){
+    return selectedReturnItems.some(r => r.id === txId);
+}
+
+function toggleReturnSelect(rec){
+    const idx = selectedReturnItems.findIndex(r => r.id === rec.id);
+    if(idx >= 0){
+        selectedReturnItems.splice(idx, 1);
+    }else{
+        selectedReturnItems.push(rec);
+    }
+    updateReturnBar();
+    const btn = document.querySelector(`.select-btn[data-tx-id="${rec.id}"]`);
+    if(btn) btn.textContent = isReturnSelected(rec.id) ? '✓ Сонгогдсон' : 'Буцаах';
+}
+
+function updateReturnBar(){
+    const bar = document.getElementById('returnBar');
+    const countEl = document.getElementById('returnCount');
+    if(selectedReturnItems.length === 0){
+        bar.style.display = 'none';
+    }else{
+        bar.style.display = 'flex';
+        countEl.textContent = `${selectedReturnItems.length} багаж сонгогдсон`;
+    }
+}
+
 function renderTaken(records){
     const grid = document.getElementById('toolGrid');
     grid.innerHTML = '';
@@ -612,7 +641,7 @@ function renderTaken(records){
 
     records.forEach(rec => {
         const card = document.createElement('div');
-        card.className = 'history-card';
+        card.className = 'history-card' + (isReturnSelected(rec.id) ? ' selected' : '');
         const dateStr = rec.timestamp ? rec.timestamp.toDate().toLocaleString('mn-MN') : '—';
         card.innerHTML =
             '<div class="history-images">' +
@@ -629,8 +658,10 @@ function renderTaken(records){
             '</div>' +
             '<div class="tool-name">' + escapeHtml(rec.toolName) + '</div>' +
             '<div class="tool-meta">' + escapeHtml(categoryName(rec.categoryId)) + ' • ' + dateStr + '</div>' +
-            '<button class="select-btn" style="margin:10px 15px 15px;width:calc(100% - 30px);">Буцаах</button>';
-        card.querySelector('.select-btn').onclick = () => openDetail(rec);
+            '<button class="select-btn" data-tx-id="' + rec.id + '" style="margin:10px 15px 15px;width:calc(100% - 30px);">' +
+                (isReturnSelected(rec.id) ? '✓ Сонгогдсон' : 'Буцаах') +
+            '</button>';
+        card.querySelector('.select-btn').onclick = () => toggleReturnSelect(rec);
         grid.appendChild(card);
     });
 }
@@ -743,26 +774,40 @@ function renderHistory(records){
     });
 }
 
-function openDetail(rec){
-    currentSelection = rec;
+function openCartDetail(){
+    if(selectedReturnItems.length === 0) return;
 
-    const catalogImg = document.getElementById('modalCatalogImg');
-    const catalogNoImg = document.getElementById('modalCatalogNoImg');
-    if(rec.catalogImageUrl){
-        catalogImg.src = rec.catalogImageUrl;
-        catalogImg.style.display = 'block';
-        catalogNoImg.style.display = 'none';
-    }else{
-        catalogImg.style.display = 'none';
-        catalogNoImg.style.display = 'flex';
-    }
+    const list = document.getElementById('cartList');
+    list.innerHTML = '';
 
-    document.getElementById('modalImg').src = rec.pickupPhotoUrl;
-    document.getElementById('modalName').textContent = rec.toolName;
-    document.getElementById('modalBox').textContent = categoryName(rec.categoryId);
-    document.getElementById('modalDate').textContent = rec.timestamp ? rec.timestamp.toDate().toLocaleString('mn-MN') : '—';
-    document.getElementById('modalActionBtn').style.display = 'inline-block';
+    selectedReturnItems.forEach(rec => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:12px; padding:8px; background:#f4f6f9; border-radius:10px;';
+        row.innerHTML =
+            '<div style="width:48px; height:48px; border-radius:8px; overflow:hidden; flex-shrink:0; background:#e9edf2; display:flex; align-items:center; justify-content:center;">' +
+                (rec.catalogImageUrl
+                    ? '<img src="' + rec.catalogImageUrl + '" style="width:100%; height:100%; object-fit:cover;">'
+                    : '<span style="font-size:20px; opacity:.3;">🛠️</span>') +
+            '</div>' +
+            '<div style="flex:1;">' +
+                '<div style="font-weight:600; color:#2E445D;">' + escapeHtml(rec.toolName) + '</div>' +
+                '<div style="font-size:12px; color:#888;">' + escapeHtml(categoryName(rec.categoryId)) + '</div>' +
+            '</div>' +
+            '<button onclick="removeFromReturnCart(\'' + rec.id + '\')" style="border:none; background:none; color:#b03a3a; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>';
+        list.appendChild(row);
+    });
+
     document.getElementById('detailModal').classList.add('show');
+}
+
+function removeFromReturnCart(txId){
+    const rec = selectedReturnItems.find(r => r.id === txId);
+    if(rec) toggleReturnSelect(rec);
+    if(selectedReturnItems.length === 0){
+        closeModal();
+    }else{
+        openCartDetail();
+    }
 }
 
 function closeModal(){
@@ -858,48 +903,58 @@ function retakeImage(){
 }
 
 async function confirmCapture(){
-    if(!capturedBlob || !currentSelection || isSaving){
+    if(!capturedBlob || selectedReturnItems.length === 0 || isSaving){
         return;
     }
     isSaving = true;
     document.getElementById('btnConfirm').disabled = true;
     document.getElementById('cameraStatus').textContent = "Хадгалж байна...";
 
-    const rec = currentSelection;
-
     try{
+        // 1. Өгсөн үеийн зургийг (нэг зураг, бүх багажид адилхан) Storage-д
+        //    нэг удаа хадгална
         const filename = 'returns/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
         const ref = storage.ref(filename);
         await ref.put(capturedBlob);
         const returnPhotoUrl = await ref.getDownloadURL();
 
-        const toolRef = db.collection("tools").doc(rec.toolId);
-        const txRef = db.collection("transactions").doc(rec.id);
+        // 2. Нэг зэрэг буцаагдсан бичлэгүүдийг холбох зориулалттай batchId
+        const returnBatchId = 'rb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 
-        await db.runTransaction(async (transaction) => {
-            const toolDoc = await transaction.get(toolRef);
+        // 3. Сонгогдсон БҮХ бичлэгийг боловсруулна (тус бүрийг Firestore
+        //    transaction-оор хамгаалсан байдлаар)
+        for(const rec of selectedReturnItems){
+            const toolRef = db.collection("tools").doc(rec.toolId);
+            const txRef = db.collection("transactions").doc(rec.id);
 
-            if(toolDoc.exists){
-                const data = toolDoc.data();
-                const available = data.availableQty ?? 0;
-                const total = data.totalQty ?? available + 1;
-                const newAvailable = Math.min(total, available + 1);
-                transaction.update(toolRef, { availableQty: newAvailable });
-            }
+            await db.runTransaction(async (transaction) => {
+                const toolDoc = await transaction.get(toolRef);
 
-            transaction.update(txRef, {
-                status: "returned",
-                type: "return",
-                returnPhotoUrl: returnPhotoUrl,
-                returnTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                if(toolDoc.exists){
+                    const data = toolDoc.data();
+                    const available = data.availableQty ?? 0;
+                    const total = data.totalQty ?? available + 1;
+                    const newAvailable = Math.min(total, available + 1);
+                    transaction.update(toolRef, { availableQty: newAvailable });
+                }
+
+                transaction.update(txRef, {
+                    status: "returned",
+                    type: "return",
+                    returnPhotoUrl: returnPhotoUrl,
+                    returnBatchId: returnBatchId,
+                    returnTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
             });
-        });
+        }
 
         document.getElementById('cameraStatus').textContent = "✅ Амжилттай буцаагдсан!";
 
         setTimeout(() => {
             closeCamera();
             closeModal();
+            selectedReturnItems = [];
+            updateReturnBar();
             loadTakenTools();
         }, 900);
 
