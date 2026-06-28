@@ -720,10 +720,15 @@ function showType(typeId){
 }
 
 /* ---------- Олон багаж сонгох (сагс) ---------- */
-let selectedItems = []; // [{id, name, categoryId, imageUrl}]
+let selectedItems = []; // [{id, name, categoryId, imageUrl, availableQty, qty}]
 
 function isSelected(toolId){
     return selectedItems.some(item => item.id === toolId);
+}
+
+function getSelectedQty(toolId){
+    const item = selectedItems.find(item => item.id === toolId);
+    return item ? item.qty : 0;
 }
 
 function toggleSelect(tool){
@@ -731,23 +736,64 @@ function toggleSelect(tool){
     if(idx >= 0){
         selectedItems.splice(idx, 1);
     }else{
-        selectedItems.push(tool);
+        selectedItems.push({ ...tool, qty: 1 }); // эхэндээ 1 ширхэгээр сонгогдоно
     }
     updateSelectedBar();
-    // Тухайн card-ийн харагдалтыг шинэчилнэ (дахин бүхэл grid render
-    // хийхгүй, зөвхөн selected class-ийг сэлгэнэ — хурдан байх үүднээс)
-    const card = document.querySelector(`.tool-card[data-tool-id="${tool.id}"]`);
-    if(card) card.classList.toggle('selected', isSelected(tool.id));
+    refreshCardDisplay(tool.id);
+}
+
+function changeQty(toolId, delta){
+    const item = selectedItems.find(item => item.id === toolId);
+    if(!item) return;
+
+    const newQty = item.qty + delta;
+    const maxQty = item.availableQty ?? 1;
+
+    if(newQty < 1){
+        // 0 хүртэл буурвал сагснаас хасна
+        const idx = selectedItems.findIndex(i => i.id === toolId);
+        selectedItems.splice(idx, 1);
+    }else if(newQty <= maxQty){
+        item.qty = newQty;
+    }
+
+    updateSelectedBar();
+    refreshCardDisplay(toolId);
+}
+
+function refreshCardDisplay(toolId){
+    const card = document.querySelector(`.tool-card[data-tool-id="${toolId}"]`);
+    if(!card) return;
+
+    const selected = isSelected(toolId);
+    card.classList.toggle('selected', selected);
+
+    const btnWrap = card.querySelector('.select-btn-wrap');
+    if(!btnWrap) return;
+
+    if(selected){
+        const qty = getSelectedQty(toolId);
+        btnWrap.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <button onclick="changeQty('${toolId}', -1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">−</button>
+                <span style="font-weight:700; min-width:20px; text-align:center;">${qty}</span>
+                <button onclick="changeQty('${toolId}', 1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">+</button>
+            </div>
+        `;
+    }else{
+        btnWrap.innerHTML = `<button class="select-btn" onclick="toggleSelect(toolsCache.find(t => t.id === '${toolId}'))">Сонгох</button>`;
+    }
 }
 
 function updateSelectedBar(){
     const bar = document.getElementById('selectedBar');
     const countEl = document.getElementById('selectedCount');
+    const totalQty = selectedItems.reduce((sum, item) => sum + item.qty, 0);
     if(selectedItems.length === 0){
         bar.style.display = 'none';
     }else{
         bar.style.display = 'flex';
-        countEl.textContent = `${selectedItems.length} багаж сонгогдсон`;
+        countEl.textContent = `${totalQty} ширхэг (${selectedItems.length} төрөл) сонгогдсон`;
     }
 }
 
@@ -762,9 +808,27 @@ function renderToolGrid(items){
 
     items.forEach(tool => {
         const available = tool.availableQty ?? 0;
+        const selected = isSelected(tool.id);
         const card = document.createElement('div');
-        card.className = 'tool-card' + (isSelected(tool.id) ? ' selected' : '');
+        card.className = 'tool-card' + (selected ? ' selected' : '');
         card.setAttribute('data-tool-id', tool.id);
+
+        let btnWrapHtml;
+        if(available <= 0){
+            btnWrapHtml = `<button class="select-btn" disabled>Дууссан</button>`;
+        }else if(selected){
+            const qty = getSelectedQty(tool.id);
+            btnWrapHtml = `
+                <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                    <button onclick="changeQty('${tool.id}', -1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">−</button>
+                    <span style="font-weight:700; min-width:20px; text-align:center;">${qty}</span>
+                    <button onclick="changeQty('${tool.id}', 1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">+</button>
+                </div>
+            `;
+        }else{
+            btnWrapHtml = `<button class="select-btn" onclick='toggleSelect(toolsCache.find(t => t.id === "${tool.id}"))'>Сонгох</button>`;
+        }
+
         card.innerHTML = `
             <div class="img-wrap">
                 ${tool.imageUrl
@@ -773,17 +837,8 @@ function renderToolGrid(items){
             </div>
             <div class="tool-name">${escapeHtml(tool.name)}</div>
             <div class="tool-qty ${available <= 0 ? 'zero' : ''}">Боломжтой: ${available} ширхэг</div>
-            <button class="select-btn" ${available <= 0 ? 'disabled' : ''}>
-                ${available <= 0 ? 'Дууссан' : (isSelected(tool.id) ? '✓ Сонгогдсон' : 'Сонгох')}
-            </button>
+            <div class="select-btn-wrap" style="margin:10px 15px 15px;">${btnWrapHtml}</div>
         `;
-        const btn = card.querySelector('.select-btn');
-        if(available > 0){
-            btn.onclick = () => {
-                toggleSelect(tool);
-                btn.textContent = isSelected(tool.id) ? '✓ Сонгогдсон' : 'Сонгох';
-            };
-        }
         grid.appendChild(card);
     });
 }
@@ -829,7 +884,7 @@ function openCartDetail(){
                     : `<span style="font-size:20px; opacity:.3;">🛠️</span>`}
             </div>
             <div style="flex:1;">
-                <div style="font-weight:600; color:#2E445D;">${escapeHtml(tool.name)}</div>
+                <div style="font-weight:600; color:#2E445D;">${escapeHtml(tool.name)} <span style="color:#888; font-weight:500;">× ${tool.qty}</span></div>
                 <div style="font-size:12px; color:#888;">${escapeHtml(categoryName(tool.categoryId))}</div>
             </div>
             <button onclick="removeFromCart('${tool.id}')" style="border:none; background:none; color:#b03a3a; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>
@@ -841,18 +896,14 @@ function openCartDetail(){
 }
 
 function removeFromCart(toolId){
-    const tool = selectedItems.find(item => item.id === toolId);
-    if(tool) toggleSelect(tool);
+    const idx = selectedItems.findIndex(item => item.id === toolId);
+    if(idx >= 0) selectedItems.splice(idx, 1);
+    updateSelectedBar();
+    refreshCardDisplay(toolId);
     if(selectedItems.length === 0){
         closeModal();
     }else{
         openCartDetail(); // жагсаалтыг шинэчлэнэ
-    }
-    // Grid дотор харагдаж байгаа card-ийн товчийг ч шинэчилнэ
-    const card = document.querySelector(`.tool-card[data-tool-id="${toolId}"]`);
-    if(card){
-        const btn = card.querySelector('.select-btn');
-        if(btn) btn.textContent = 'Сонгох';
     }
 }
 
@@ -966,9 +1017,11 @@ async function confirmCapture(){
         await ref.put(capturedBlob);
         const pickupPhotoUrl = await ref.getDownloadURL();
 
-        // 2. Сонгогдсон БҮХ багажийн тоог хасаж, тус бүрт transaction бичлэг
-        //    үүсгэнэ. Tool тус бүрийг тусдаа Firestore transaction-оор
-        //    боловсруулна (race condition-оос хамгаалах үүднээс)
+        // 2. Сонгогдсон БҮХ багажийн тоог хасаж, тус бүрт QTY ширхэг
+        //    transaction бичлэг үүсгэнэ (1 ширхэг = 1 transaction, учир нь
+        //    буцаахдаа тус бүрчлэн хянах боломжтой байх ёстой). Tool тус
+        //    бүрийг тусдаа Firestore transaction-оор боловсруулна
+        //    (race condition-оос хамгаалах үүднээс)
         const affectedCategoryIds = new Set();
 
         // Нэг зэрэг авагдсан bichлэгүүдийг холбох зориулалттай batchId —
@@ -978,35 +1031,38 @@ async function confirmCapture(){
 
         for(const tool of selectedItems){
             const toolRef = db.collection("tools").doc(tool.id);
+            const qtyToTake = tool.qty || 1;
 
-            await db.runTransaction(async (transaction) => {
-                const toolDoc = await transaction.get(toolRef);
-                const available = toolDoc.data().availableQty ?? 0;
+            for(let i = 0; i < qtyToTake; i++){
+                await db.runTransaction(async (transaction) => {
+                    const toolDoc = await transaction.get(toolRef);
+                    const available = toolDoc.data().availableQty ?? 0;
 
-                if(available <= 0){
-                    throw new Error(`"${tool.name}" дууссан байна`);
-                }
+                    if(available <= 0){
+                        throw new Error(`"${tool.name}" дууссан байна`);
+                    }
 
-                transaction.update(toolRef, { availableQty: available - 1 });
+                    transaction.update(toolRef, { availableQty: available - 1 });
 
-                const txRef = db.collection("transactions").doc();
-                transaction.set(txRef, {
-                    toolId: tool.id,
-                    toolName: tool.name,
-                    categoryId: tool.categoryId,
-                    catalogImageUrl: tool.imageUrl || null,
-                    pickupPhotoUrl: pickupPhotoUrl,
-                    returnPhotoUrl: null,
-                    userName: "",
-                    status: "borrowed",
-                    type: "borrow",
-                    borrowBatchId: borrowBatchId,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    const txRef = db.collection("transactions").doc();
+                    transaction.set(txRef, {
+                        toolId: tool.id,
+                        toolName: tool.name,
+                        categoryId: tool.categoryId,
+                        catalogImageUrl: tool.imageUrl || null,
+                        pickupPhotoUrl: pickupPhotoUrl,
+                        returnPhotoUrl: null,
+                        userName: "",
+                        status: "borrowed",
+                        type: "borrow",
+                        borrowBatchId: borrowBatchId,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 });
-            });
+            }
 
             // Local cache-ийг шинэчилнэ
-            tool.availableQty = (tool.availableQty ?? 1) - 1;
+            tool.availableQty = (tool.availableQty ?? qtyToTake) - qtyToTake;
             if(tool.categoryId) affectedCategoryIds.add(tool.categoryId);
         }
 
@@ -1016,10 +1072,18 @@ async function confirmCapture(){
         await db.collection("esp32_triggers").doc("door1").set({
             triggered: true,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            toolNames: selectedItems.map(t => t.name)
+            toolNames: selectedItems.map(t => `${t.name} x${t.qty}`)
         });
 
-        document.getElementById('cameraStatus').textContent = "✅ Амжилттай авлаа!";
+        // Хэрэглэгчид аль багаж аль хайрцагт байрлаж байгааг тодорхой
+        // харуулна (текст жагсаалт)
+        const placementLines = selectedItems.map(t =>
+            `${t.name} x${t.qty} — ${categoryName(t.categoryId)}`
+        );
+        document.getElementById('cameraStatus').innerHTML =
+            "✅ Амжилттай авлаа!<br><span style='font-size:13px; opacity:.85;'>" +
+            placementLines.map(line => escapeHtml(line)).join("<br>") +
+            "</span>";
 
         setTimeout(() => {
             closeCamera();
@@ -1030,7 +1094,7 @@ async function confirmCapture(){
             if(affectedCategoryIds.size > 0){
                 showCategory(Array.from(affectedCategoryIds)[0]);
             }
-        }, 900);
+        }, 2200);
 
     }catch(err){
         console.error("Хадгалахад алдаа:", err);
