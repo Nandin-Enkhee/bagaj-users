@@ -204,6 +204,11 @@ body{
     box-shadow:0 10px 25px rgba(0,0,0,.15);
 }
 
+.tool-card.selected{
+    border:3px solid #4F6E91;
+    box-shadow:0 0 0 3px rgba(79,110,145,.25);
+}
+
 .tool-card .img-wrap{
     width:100%;
     height:160px;
@@ -556,19 +561,20 @@ body{
 
 </div>
 
-<!-- Detail Modal -->
+<!-- Сонгогдсон багажийн floating bar -->
+<div id="selectedBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#2E445D; color:white; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 -4px 20px rgba(0,0,0,.2); z-index:500;">
+    <div id="selectedCount" style="font-weight:600; font-size:16px;">0 багаж сонгогдсон</div>
+    <button onclick="openCartDetail()" style="padding:12px 28px; border:none; border-radius:10px; background:linear-gradient(135deg,#5D83B3,#4F6E91); color:white; font-size:16px; font-weight:700; cursor:pointer;">📷 Авах</button>
+</div>
+
+<!-- Cart Detail Modal -->
 <div class="modal-overlay" id="detailModal">
-    <div class="modal-box">
-        <div class="modal-img" id="modalImgWrap">
-            <img id="modalImg" src="" alt="" style="display:none;">
-            <div class="no-img" id="modalNoImg">🛠️</div>
-        </div>
-        <div class="modal-info">
+    <div class="modal-box" style="flex-direction:column; max-width:480px;">
+        <div class="modal-info" style="padding:24px;">
             <button class="modal-close" onclick="closeModal()">✕</button>
-            <h2 id="modalName"></h2>
-            <div class="info-row"><b>Хайрцаг:</b> <span id="modalBox"></span></div>
-            <div class="info-row"><b>Боломжтой:</b> <span id="modalStatus"></span></div>
-            <button class="take-btn" id="modalTakeBtn" onclick="openCamera()">📷 Авах</button>
+            <h2 style="margin-bottom:16px;">Сонгогдсон багажууд</h2>
+            <div id="cartList" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; margin-bottom:10px;"></div>
+            <button class="take-btn" id="modalTakeBtn" onclick="openCamera()">📷 Зураг авч баталгаажуулах</button>
         </div>
     </div>
 </div>
@@ -713,6 +719,38 @@ function showType(typeId){
     renderToolGrid(items);
 }
 
+/* ---------- Олон багаж сонгох (сагс) ---------- */
+let selectedItems = []; // [{id, name, categoryId, imageUrl}]
+
+function isSelected(toolId){
+    return selectedItems.some(item => item.id === toolId);
+}
+
+function toggleSelect(tool){
+    const idx = selectedItems.findIndex(item => item.id === tool.id);
+    if(idx >= 0){
+        selectedItems.splice(idx, 1);
+    }else{
+        selectedItems.push(tool);
+    }
+    updateSelectedBar();
+    // Тухайн card-ийн харагдалтыг шинэчилнэ (дахин бүхэл grid render
+    // хийхгүй, зөвхөн selected class-ийг сэлгэнэ — хурдан байх үүднээс)
+    const card = document.querySelector(`.tool-card[data-tool-id="${tool.id}"]`);
+    if(card) card.classList.toggle('selected', isSelected(tool.id));
+}
+
+function updateSelectedBar(){
+    const bar = document.getElementById('selectedBar');
+    const countEl = document.getElementById('selectedCount');
+    if(selectedItems.length === 0){
+        bar.style.display = 'none';
+    }else{
+        bar.style.display = 'flex';
+        countEl.textContent = `${selectedItems.length} багаж сонгогдсон`;
+    }
+}
+
 function renderToolGrid(items){
     const grid = document.getElementById('toolGrid');
     grid.innerHTML = '';
@@ -725,7 +763,8 @@ function renderToolGrid(items){
     items.forEach(tool => {
         const available = tool.availableQty ?? 0;
         const card = document.createElement('div');
-        card.className = 'tool-card';
+        card.className = 'tool-card' + (isSelected(tool.id) ? ' selected' : '');
+        card.setAttribute('data-tool-id', tool.id);
         card.innerHTML = `
             <div class="img-wrap">
                 ${tool.imageUrl
@@ -735,12 +774,15 @@ function renderToolGrid(items){
             <div class="tool-name">${escapeHtml(tool.name)}</div>
             <div class="tool-qty ${available <= 0 ? 'zero' : ''}">Боломжтой: ${available} ширхэг</div>
             <button class="select-btn" ${available <= 0 ? 'disabled' : ''}>
-                ${available <= 0 ? 'Дууссан' : 'Сонгох'}
+                ${available <= 0 ? 'Дууссан' : (isSelected(tool.id) ? '✓ Сонгогдсон' : 'Сонгох')}
             </button>
         `;
         const btn = card.querySelector('.select-btn');
         if(available > 0){
-            btn.onclick = () => openDetail(tool);
+            btn.onclick = () => {
+                toggleSelect(tool);
+                btn.textContent = isSelected(tool.id) ? '✓ Сонгогдсон' : 'Сонгох';
+            };
         }
         grid.appendChild(card);
     });
@@ -770,28 +812,48 @@ function escapeHtml(str){
     return div.innerHTML;
 }
 
-/* ---------- Detail modal ---------- */
-let currentSelection = null; // the tool object from toolsCache
+/* ---------- Cart Detail modal ---------- */
+function openCartDetail(){
+    if(selectedItems.length === 0) return;
 
-function openDetail(tool){
-    currentSelection = tool;
+    const list = document.getElementById('cartList');
+    list.innerHTML = '';
 
-    const img = document.getElementById('modalImg');
-    const noImg = document.getElementById('modalNoImg');
-    if(tool.imageUrl){
-        img.src = tool.imageUrl;
-        img.style.display = 'block';
-        noImg.style.display = 'none';
-    }else{
-        img.style.display = 'none';
-        noImg.style.display = 'flex';
-    }
+    selectedItems.forEach(tool => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:12px; padding:8px; background:#f4f6f9; border-radius:10px;';
+        row.innerHTML = `
+            <div style="width:48px; height:48px; border-radius:8px; overflow:hidden; flex-shrink:0; background:#e9edf2; display:flex; align-items:center; justify-content:center;">
+                ${tool.imageUrl
+                    ? `<img src="${tool.imageUrl}" style="width:100%; height:100%; object-fit:cover;">`
+                    : `<span style="font-size:20px; opacity:.3;">🛠️</span>`}
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight:600; color:#2E445D;">${escapeHtml(tool.name)}</div>
+                <div style="font-size:12px; color:#888;">${escapeHtml(categoryName(tool.categoryId))}</div>
+            </div>
+            <button onclick="removeFromCart('${tool.id}')" style="border:none; background:none; color:#b03a3a; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>
+        `;
+        list.appendChild(row);
+    });
 
-    document.getElementById('modalName').textContent = tool.name;
-    document.getElementById('modalBox').textContent = categoryName(tool.categoryId);
-    document.getElementById('modalStatus').textContent = `${tool.availableQty ?? 0} ширхэг`;
-    document.getElementById('modalTakeBtn').disabled = (tool.availableQty ?? 0) <= 0;
     document.getElementById('detailModal').classList.add('show');
+}
+
+function removeFromCart(toolId){
+    const tool = selectedItems.find(item => item.id === toolId);
+    if(tool) toggleSelect(tool);
+    if(selectedItems.length === 0){
+        closeModal();
+    }else{
+        openCartDetail(); // жагсаалтыг шинэчлэнэ
+    }
+    // Grid дотор харагдаж байгаа card-ийн товчийг ч шинэчилнэ
+    const card = document.querySelector(`.tool-card[data-tool-id="${toolId}"]`);
+    if(card){
+        const btn = card.querySelector('.select-btn');
+        if(btn) btn.textContent = 'Сонгох';
+    }
 }
 
 function closeModal(){
@@ -889,61 +951,84 @@ function retakeImage(){
 }
 
 async function confirmCapture(){
-    if(!capturedBlob || !currentSelection || isSaving){
+    if(!capturedBlob || selectedItems.length === 0 || isSaving){
         return;
     }
     isSaving = true;
     document.getElementById('btnConfirm').disabled = true;
     document.getElementById('cameraStatus').textContent = "Хадгалж байна...";
 
-    const tool = currentSelection;
-
     try{
-        // 1. Авсан үеийн зургийг Storage-д хадгална
+        // 1. Авсан үеийн зургийг (нэг зураг, бүх багажид адилхан) Storage-д
+        //    нэг удаа хадгална
         const filename = `pickups/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
         const ref = storage.ref(filename);
         await ref.put(capturedBlob);
         const pickupPhotoUrl = await ref.getDownloadURL();
 
-        // 2. Firestore transaction: тоог хасаж, бичлэг үүсгэнэ
-        const toolRef = db.collection("tools").doc(tool.id);
+        // 2. Сонгогдсон БҮХ багажийн тоог хасаж, тус бүрт transaction бичлэг
+        //    үүсгэнэ. Tool тус бүрийг тусдаа Firestore transaction-оор
+        //    боловсруулна (race condition-оос хамгаалах үүднээс)
+        const affectedCategoryIds = new Set();
 
-        await db.runTransaction(async (transaction) => {
-            const toolDoc = await transaction.get(toolRef);
-            const available = toolDoc.data().availableQty ?? 0;
+        // Нэг зэрэг авагдсан bichлэгүүдийг холбох зориулалттай batchId —
+        // admin-ийн Tuuh хуудас дээр нэг card дотор нэгтгэж харуулахад
+        // ашиглагдана.
+        const borrowBatchId = 'bb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 
-            if(available <= 0){
-                throw new Error("Энэ багаж дууссан байна");
-            }
+        for(const tool of selectedItems){
+            const toolRef = db.collection("tools").doc(tool.id);
 
-            transaction.update(toolRef, { availableQty: available - 1 });
+            await db.runTransaction(async (transaction) => {
+                const toolDoc = await transaction.get(toolRef);
+                const available = toolDoc.data().availableQty ?? 0;
 
-            const txRef = db.collection("transactions").doc();
-            transaction.set(txRef, {
-                toolId: tool.id,
-                toolName: tool.name,
-                categoryId: tool.categoryId,
-                catalogImageUrl: tool.imageUrl || null,
-                pickupPhotoUrl: pickupPhotoUrl,
-                returnPhotoUrl: null,
-                userName: "",
-                status: "borrowed",
-                type: "borrow",
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                if(available <= 0){
+                    throw new Error(`"${tool.name}" дууссан байна`);
+                }
+
+                transaction.update(toolRef, { availableQty: available - 1 });
+
+                const txRef = db.collection("transactions").doc();
+                transaction.set(txRef, {
+                    toolId: tool.id,
+                    toolName: tool.name,
+                    categoryId: tool.categoryId,
+                    catalogImageUrl: tool.imageUrl || null,
+                    pickupPhotoUrl: pickupPhotoUrl,
+                    returnPhotoUrl: null,
+                    userName: "",
+                    status: "borrowed",
+                    type: "borrow",
+                    borrowBatchId: borrowBatchId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
             });
+
+            // Local cache-ийг шинэчилнэ
+            tool.availableQty = (tool.availableQty ?? 1) - 1;
+            if(tool.categoryId) affectedCategoryIds.add(tool.categoryId);
+        }
+
+        // 3. БҮХ багаж амжилттай авагдсаны дараа ESP32-д зориулсан
+        //    "trigger" бичлэгийг 1 удаа үүсгэнэ — ESP32 энэ document-ийг
+        //    тогтмол шалгаж, шинэ trigger гарвал motor ажиллуулна.
+        await db.collection("esp32_triggers").doc("door1").set({
+            triggered: true,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            toolNames: selectedItems.map(t => t.name)
         });
 
         document.getElementById('cameraStatus').textContent = "✅ Амжилттай авлаа!";
 
-        // Local cache-ийг шинэчилнэ (дараагийн харагдалт зөв байхын тулд)
-        tool.availableQty = (tool.availableQty ?? 1) - 1;
-
         setTimeout(() => {
             closeCamera();
             closeModal();
-            // Дэлгэцийг шинэчилнэ
-            if(tool.categoryId){
-                showCategory(tool.categoryId);
+            selectedItems = [];
+            updateSelectedBar();
+            // Дэлгэцийг шинэчилнэ (анхны нөлөөлсөн хайрцагны харагдалт)
+            if(affectedCategoryIds.size > 0){
+                showCategory(Array.from(affectedCategoryIds)[0]);
             }
         }, 900);
 
