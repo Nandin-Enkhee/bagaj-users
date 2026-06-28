@@ -601,67 +601,150 @@ async function loadTakenTools(){
 }
 
 /* ---------- Олон багаж сонгох (буцаах сагс) ---------- */
-let selectedReturnItems = []; // [rec, rec, ...]
+// selectedReturnItems: [{ toolId, toolName, categoryId, catalogImageUrl,
+//                          qty, txIds: [id, id, ...] }]
+// txIds нь тухайн toolId-н борлуулсан (борлуулсан = авсан) ganц
+// transaction-уудаас QTY ширхэгийг сонгож авсан жагсаалт.
+let selectedReturnItems = [];
+let takenGroupsCache = []; // [{ toolId, toolName, categoryId, catalogImageUrl, qty (нийт авсан), txIds: [...] }]
 
-function isReturnSelected(txId){
-    return selectedReturnItems.some(r => r.id === txId);
+function getSelectedReturnQty(toolId){
+    const item = selectedReturnItems.find(i => i.toolId === toolId);
+    return item ? item.qty : 0;
 }
 
-function toggleReturnSelect(rec){
-    const idx = selectedReturnItems.findIndex(r => r.id === rec.id);
-    if(idx >= 0){
-        selectedReturnItems.splice(idx, 1);
-    }else{
-        selectedReturnItems.push(rec);
+function changeReturnQty(toolId, delta){
+    const group = takenGroupsCache.find(g => g.toolId === toolId);
+    if(!group) return;
+
+    let item = selectedReturnItems.find(i => i.toolId === toolId);
+    const currentQty = item ? item.qty : 0;
+    const newQty = currentQty + delta;
+
+    if(newQty < 1){
+        if(item){
+            const idx = selectedReturnItems.findIndex(i => i.toolId === toolId);
+            selectedReturnItems.splice(idx, 1);
+        }
+    }else if(newQty <= group.qty){
+        const txIds = group.txIds.slice(0, newQty); // эхний N transaction-ийг сонгоно
+        if(item){
+            item.qty = newQty;
+            item.txIds = txIds;
+        }else{
+            selectedReturnItems.push({
+                toolId: group.toolId,
+                toolName: group.toolName,
+                categoryId: group.categoryId,
+                catalogImageUrl: group.catalogImageUrl,
+                qty: newQty,
+                txIds: txIds
+            });
+        }
     }
+
     updateReturnBar();
-    const btn = document.querySelector(`.select-btn[data-tx-id="${rec.id}"]`);
-    if(btn) btn.textContent = isReturnSelected(rec.id) ? '✓ Сонгогдсон' : 'Буцаах';
+    refreshTakenCardDisplay(toolId);
+}
+
+function refreshTakenCardDisplay(toolId){
+    const card = document.querySelector(`.history-card[data-tool-id="${toolId}"]`);
+    if(!card) return;
+    const btnWrap = card.querySelector('.return-btn-wrap');
+    if(!btnWrap) return;
+
+    const group = takenGroupsCache.find(g => g.toolId === toolId);
+    const qty = getSelectedReturnQty(toolId);
+
+    card.classList.toggle('selected', qty > 0);
+
+    if(qty > 0){
+        btnWrap.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <button onclick="changeReturnQty('${toolId}', -1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">−</button>
+                <span style="font-weight:700; min-width:20px; text-align:center;">${qty}</span>
+                <button onclick="changeReturnQty('${toolId}', 1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">+</button>
+            </div>
+        `;
+    }else{
+        btnWrap.innerHTML = `<button class="select-btn" onclick="changeReturnQty('${toolId}', 1)">Буцаах</button>`;
+    }
 }
 
 function updateReturnBar(){
     const bar = document.getElementById('returnBar');
     const countEl = document.getElementById('returnCount');
+    const totalQty = selectedReturnItems.reduce((sum, item) => sum + item.qty, 0);
     if(selectedReturnItems.length === 0){
         bar.style.display = 'none';
     }else{
         bar.style.display = 'flex';
-        countEl.textContent = `${selectedReturnItems.length} багаж сонгогдсон`;
+        countEl.textContent = `${totalQty} ширхэг (${selectedReturnItems.length} төрөл) сонгогдсон`;
     }
+}
+
+// "Авсан багажууд" жагсаалтыг toolId-аар нэгтгэж бүлэг болгоно
+function groupTakenRecords(records){
+    const groups = {};
+    records.forEach(rec => {
+        if(!groups[rec.toolId]){
+            groups[rec.toolId] = {
+                toolId: rec.toolId,
+                toolName: rec.toolName,
+                categoryId: rec.categoryId,
+                catalogImageUrl: rec.catalogImageUrl,
+                pickupPhotoUrl: rec.pickupPhotoUrl,
+                qty: 0,
+                txIds: []
+            };
+        }
+        groups[rec.toolId].qty += 1;
+        groups[rec.toolId].txIds.push(rec.id);
+    });
+    return Object.values(groups);
 }
 
 function renderTaken(records){
     const grid = document.getElementById('toolGrid');
     grid.innerHTML = '';
 
-    if(records.length === 0){
+    takenGroupsCache = groupTakenRecords(records);
+
+    if(takenGroupsCache.length === 0){
         grid.innerHTML = '<p class="empty-msg">Одоогоор авсан багаж байхгүй байна.</p>';
         return;
     }
 
-    records.forEach(rec => {
+    takenGroupsCache.forEach(group => {
         const card = document.createElement('div');
-        card.className = 'history-card' + (isReturnSelected(rec.id) ? ' selected' : '');
-        const dateStr = rec.timestamp ? rec.timestamp.toDate().toLocaleString('mn-MN') : '—';
+        const selectedQty = getSelectedReturnQty(group.toolId);
+        card.className = 'history-card' + (selectedQty > 0 ? ' selected' : '');
+        card.setAttribute('data-tool-id', group.toolId);
+
+        const btnWrapHtml = selectedQty > 0
+            ? `<div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                 <button onclick="changeReturnQty('${group.toolId}', -1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">−</button>
+                 <span style="font-weight:700; min-width:20px; text-align:center;">${selectedQty}</span>
+                 <button onclick="changeReturnQty('${group.toolId}', 1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">+</button>
+               </div>`
+            : `<button class="select-btn" onclick="changeReturnQty('${group.toolId}', 1)">Буцаах</button>`;
+
         card.innerHTML =
             '<div class="history-images">' +
                 '<div class="img-half">' +
-                    (rec.catalogImageUrl
-                        ? '<img src="' + rec.catalogImageUrl + '" alt="' + escapeHtml(rec.toolName) + ' - багаж">'
+                    (group.catalogImageUrl
+                        ? '<img src="' + group.catalogImageUrl + '" alt="' + escapeHtml(group.toolName) + ' - багаж">'
                         : '<div class="no-img">🛠️</div>') +
                     '<div class="img-label">Багаж</div>' +
                 '</div>' +
                 '<div class="img-half">' +
-                    '<img src="' + rec.pickupPhotoUrl + '" alt="' + escapeHtml(rec.toolName) + ' - авсан үеийн зураг">' +
+                    '<img src="' + group.pickupPhotoUrl + '" alt="' + escapeHtml(group.toolName) + ' - авсан үеийн зураг">' +
                     '<div class="img-label">Авсан үед</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="tool-name">' + escapeHtml(rec.toolName) + '</div>' +
-            '<div class="tool-meta">' + escapeHtml(categoryName(rec.categoryId)) + ' • ' + dateStr + '</div>' +
-            '<button class="select-btn" data-tx-id="' + rec.id + '" style="margin:10px 15px 15px;width:calc(100% - 30px);">' +
-                (isReturnSelected(rec.id) ? '✓ Сонгогдсон' : 'Буцаах') +
-            '</button>';
-        card.querySelector('.select-btn').onclick = () => toggleReturnSelect(rec);
+            '<div class="tool-name">' + escapeHtml(group.toolName) + ' <span style="color:#888; font-weight:500;">x' + group.qty + '</span></div>' +
+            '<div class="tool-meta">' + escapeHtml(categoryName(group.categoryId)) + '</div>' +
+            '<div class="return-btn-wrap" style="margin:10px 15px 15px;">' + btnWrapHtml + '</div>';
         grid.appendChild(card);
     });
 }
@@ -780,29 +863,31 @@ function openCartDetail(){
     const list = document.getElementById('cartList');
     list.innerHTML = '';
 
-    selectedReturnItems.forEach(rec => {
+    selectedReturnItems.forEach(item => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; align-items:center; gap:12px; padding:8px; background:#f4f6f9; border-radius:10px;';
         row.innerHTML =
             '<div style="width:48px; height:48px; border-radius:8px; overflow:hidden; flex-shrink:0; background:#e9edf2; display:flex; align-items:center; justify-content:center;">' +
-                (rec.catalogImageUrl
-                    ? '<img src="' + rec.catalogImageUrl + '" style="width:100%; height:100%; object-fit:cover;">'
+                (item.catalogImageUrl
+                    ? '<img src="' + item.catalogImageUrl + '" style="width:100%; height:100%; object-fit:cover;">'
                     : '<span style="font-size:20px; opacity:.3;">🛠️</span>') +
             '</div>' +
             '<div style="flex:1;">' +
-                '<div style="font-weight:600; color:#2E445D;">' + escapeHtml(rec.toolName) + '</div>' +
-                '<div style="font-size:12px; color:#888;">' + escapeHtml(categoryName(rec.categoryId)) + '</div>' +
+                '<div style="font-weight:600; color:#2E445D;">' + escapeHtml(item.toolName) + ' <span style="color:#888; font-weight:500;">x ' + item.qty + '</span></div>' +
+                '<div style="font-size:12px; color:#888;">' + escapeHtml(categoryName(item.categoryId)) + '</div>' +
             '</div>' +
-            '<button onclick="removeFromReturnCart(\'' + rec.id + '\')" style="border:none; background:none; color:#b03a3a; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>';
+            '<button onclick="removeFromReturnCart(\'' + item.toolId + '\')" style="border:none; background:none; color:#b03a3a; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>';
         list.appendChild(row);
     });
 
     document.getElementById('detailModal').classList.add('show');
 }
 
-function removeFromReturnCart(txId){
-    const rec = selectedReturnItems.find(r => r.id === txId);
-    if(rec) toggleReturnSelect(rec);
+function removeFromReturnCart(toolId){
+    const idx = selectedReturnItems.findIndex(i => i.toolId === toolId);
+    if(idx >= 0) selectedReturnItems.splice(idx, 1);
+    updateReturnBar();
+    refreshTakenCardDisplay(toolId);
     if(selectedReturnItems.length === 0){
         closeModal();
     }else{
@@ -922,31 +1007,45 @@ async function confirmCapture(){
         const returnBatchId = 'rb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 
         // 3. Сонгогдсон БҮХ бичлэгийг боловсруулна (тус бүрийг Firestore
-        //    transaction-оор хамгаалсан байдлаар)
-        for(const rec of selectedReturnItems){
-            const toolRef = db.collection("tools").doc(rec.toolId);
-            const txRef = db.collection("transactions").doc(rec.id);
+        //    transaction-оор хамгаалсан байдлаар). Tool бүрд QTY ширхэг
+        //    transaction (txIds) байгаа тул, тэдгээрийг бүгдийг боловсруулна.
+        for(const item of selectedReturnItems){
+            const toolRef = db.collection("tools").doc(item.toolId);
 
-            await db.runTransaction(async (transaction) => {
-                const toolDoc = await transaction.get(toolRef);
+            for(const txId of item.txIds){
+                const txRef = db.collection("transactions").doc(txId);
 
-                if(toolDoc.exists){
-                    const data = toolDoc.data();
-                    const available = data.availableQty ?? 0;
-                    const total = data.totalQty ?? available + 1;
-                    const newAvailable = Math.min(total, available + 1);
-                    transaction.update(toolRef, { availableQty: newAvailable });
-                }
+                await db.runTransaction(async (transaction) => {
+                    const toolDoc = await transaction.get(toolRef);
 
-                transaction.update(txRef, {
-                    status: "returned",
-                    type: "return",
-                    returnPhotoUrl: returnPhotoUrl,
-                    returnBatchId: returnBatchId,
-                    returnTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    if(toolDoc.exists){
+                        const data = toolDoc.data();
+                        const available = data.availableQty ?? 0;
+                        const total = data.totalQty ?? available + 1;
+                        const newAvailable = Math.min(total, available + 1);
+                        transaction.update(toolRef, { availableQty: newAvailable });
+                    }
+
+                    transaction.update(txRef, {
+                        status: "returned",
+                        type: "return",
+                        returnPhotoUrl: returnPhotoUrl,
+                        returnBatchId: returnBatchId,
+                        returnTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
                 });
-            });
+            }
         }
+
+        // 4. БҮХ багаж амжилттай буцаагдсаны дараа ESP32-д зориулсан
+        //    "trigger" бичлэгийг 1 удаа үүсгэнэ — ESP32 энэ document-ийг
+        //    тогтмол шалгаж, шинэ trigger гарвал motor ажиллуулна (буцаах
+        //    үед ч авах үед ашигласан АДИЛХАН door1 motor-ийг ашиглана).
+        await db.collection("esp32_triggers").doc("door1").set({
+            triggered: true,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            toolNames: selectedReturnItems.map(item => `${item.toolName} x${item.qty}`)
+        });
 
         document.getElementById('cameraStatus').textContent = "✅ Амжилттай буцаагдсан!";
 
