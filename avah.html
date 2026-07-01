@@ -552,6 +552,94 @@ body{
     min-height:20px;
 }
 
+/* Том, харагдахуйц "Аваарай" амжилтын панел */
+
+.pickup-success{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    color:white;
+    padding:30px 20px;
+    max-width:520px;
+    width:100%;
+}
+
+.pickup-success.show{
+    display:flex;
+}
+
+.pickup-success-icon{
+    font-size:72px;
+    margin-bottom:10px;
+    animation:popIn .35s ease;
+}
+
+@keyframes popIn{
+    0%{ transform:scale(.4); opacity:0; }
+    70%{ transform:scale(1.1); opacity:1; }
+    100%{ transform:scale(1); }
+}
+
+.pickup-success-title{
+    font-size:30px;
+    font-weight:800;
+    margin-bottom:8px;
+}
+
+.pickup-success-sub{
+    font-size:17px;
+    opacity:.85;
+    margin-bottom:22px;
+}
+
+.pickup-success-list{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    margin-bottom:28px;
+    width:100%;
+}
+
+.pickup-success-box-line{
+    background:rgba(255,255,255,.14);
+    border:2px solid rgba(255,255,255,.25);
+    border-radius:16px;
+    padding:18px 22px;
+    text-align:left;
+}
+
+.pickup-success-box-line .box-name{
+    font-size:24px;
+    font-weight:800;
+    color:#8fd3ff;
+    margin-bottom:8px;
+}
+
+.pickup-success-box-line .box-items{
+    font-size:17px;
+    font-weight:600;
+    line-height:1.6;
+    color:white;
+}
+
+.pickup-success-close{
+    padding:16px 46px;
+    border:none;
+    border-radius:14px;
+    background:#2e8b57;
+    color:white;
+    font-size:19px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.pickup-success-close:hover{
+    background:#3aa86a;
+    transform:translateY(-2px);
+}
+
 /* Tablet */
 
 @media(max-width:768px){
@@ -659,12 +747,20 @@ body{
     <video id="cameraVideo" autoplay playsinline></video>
     <canvas id="cameraCanvas"></canvas>
     <div class="camera-status" id="cameraStatus">Камер бэлдэж байна...</div>
-    <div class="camera-controls">
+    <div class="camera-controls" id="cameraControls">
         <button id="btnCapture" onclick="captureImage()">📸 Зураг авах</button>
         <button id="btnRetake" onclick="retakeImage()">🔄 Дахин авах</button>
         <button id="btnConfirm" onclick="confirmCapture()">✅ Хадгалах</button>
         <button id="btnSwitchCam" onclick="switchCamera()">🔁 Камер сэлгэх</button>
         <button id="btnCameraClose" onclick="closeCamera()">✕ Хаах</button>
+    </div>
+
+    <div class="pickup-success" id="pickupSuccess">
+        <div class="pickup-success-icon">✅</div>
+        <div class="pickup-success-title">Амжилттай авлаа!</div>
+        <div class="pickup-success-sub">Багажаа доорх хайрцгуудаас аваарай:</div>
+        <div class="pickup-success-list" id="pickupSuccessList"></div>
+        <button class="pickup-success-close" onclick="closePickupSuccess()">Ойлголоо ✓</button>
     </div>
 </div>
 
@@ -1023,12 +1119,16 @@ let cameraStream = null;
 let capturedBlob = null;
 let isSaving = false;
 let currentFacing = "user"; // "user" = урд тал, "environment" = арын тал
+let lastAffectedCategoryIds = new Set();
 
 async function openCamera(){
     if(selectedItems.length === 0) return;
 
     document.getElementById('cameraModal').classList.add('show');
     document.getElementById('cameraStatus').textContent = "Камер бэлдэж байна...";
+    document.getElementById('cameraStatus').style.display = '';
+    document.getElementById('cameraControls').style.display = '';
+    document.getElementById('pickupSuccess').classList.remove('show');
     document.getElementById('btnCapture').style.display = 'inline-block';
     document.getElementById('btnRetake').style.display = 'none';
     document.getElementById('btnConfirm').style.display = 'none';
@@ -1184,28 +1284,18 @@ async function confirmCapture(){
             toolNames: selectedItems.map(t => `${t.name} x${t.qty}`)
         });
 
-        // Хэрэглэгчид аль багаж аль хайрцагт байрлаж байгааг тодорхой
-        // харуулна (текст жагсаалт)
-        const placementLines = selectedItems.map(t =>
-            `${t.name} x${t.qty} — ${categoryName(t.categoryId)}`
-        );
-        document.getElementById('cameraStatus').innerHTML =
-            "✅ Амжилттай авлаа!<br><span style='font-size:13px; opacity:.85;'>" +
-            placementLines.map(line => escapeHtml(line)).join("<br>") +
-            "</span>";
+        // Хэрэглэгчид аль багаж аль хайрцагт байрлаж байгааг ТОМООР,
+        // тод харагдахуйц панел дээр харуулна (Firebase-ийн жижиг
+        // статус мессежийн оронд).
+        lastAffectedCategoryIds = affectedCategoryIds;
 
-        setTimeout(async () => {
-            closeCamera();
-            selectedItems = [];
-            updateCartSidebar();
-            // toolsCache-ийг Firestore-оос дахин ачаалж, availableQty-ийн
-            // ШИНЭ (бодит, буурсан) утгаар дэлгэцийг шинэчилнэ
-            const categoryToShow = affectedCategoryIds.size > 0 ? Array.from(affectedCategoryIds)[0] : null;
-            await loadData();
-            if(categoryToShow){
-                showCategory(categoryToShow);
-            }
-        }, 2200);
+        document.getElementById('cameraVideo').style.display = 'none';
+        document.getElementById('cameraCanvas').style.display = 'none';
+        document.getElementById('cameraControls').style.display = 'none';
+        document.getElementById('cameraStatus').style.display = 'none';
+
+        document.getElementById('pickupSuccessList').innerHTML = buildPickupSuccessHtml();
+        document.getElementById('pickupSuccess').classList.add('show');
 
     }catch(err){
         console.error("Хадгалахад алдаа:", err);
@@ -1214,6 +1304,50 @@ async function confirmCapture(){
     }finally{
         isSaving = false;
         document.getElementById('btnConfirm').disabled = false;
+    }
+}
+
+/* Хайрцаг тус бүрээр бүлэглэж, "Хайрцаг 1 — Алх × 2" гэх мэт том
+   мөрүүд бүхий HTML үүсгэнэ. Амжилтын том панелд ашиглагдана. */
+function buildPickupSuccessHtml(){
+    const groups = {};
+    selectedItems.forEach(item => {
+        const catId = item.categoryId || '__none__';
+        if(!groups[catId]) groups[catId] = [];
+        groups[catId].push(item);
+    });
+
+    let html = '';
+    Object.keys(groups).forEach(catId => {
+        const items = groups[catId];
+        const label = catId === '__none__' ? 'Ангилаагүй' : categoryName(catId);
+        const itemLines = items.map(t => `${escapeHtml(t.name)} × ${t.qty}`).join('<br>');
+        html += `
+            <div class="pickup-success-box-line">
+                <div class="box-name">📦 ${escapeHtml(label)}</div>
+                <div class="box-items">${itemLines}</div>
+            </div>
+        `;
+    });
+    return html;
+}
+
+/* "Ойлголоо" товч дарахад дуудагдана: панелийг хааж, камерыг
+   унтраагаад, сагсыг цэвэрлэж, дэлгэцийг шинэ өгөгдлөөр шинэчилнэ. */
+async function closePickupSuccess(){
+    document.getElementById('pickupSuccess').classList.remove('show');
+
+    closeCamera();
+    selectedItems = [];
+    updateCartSidebar();
+
+    const categoryToShow = lastAffectedCategoryIds.size > 0
+        ? Array.from(lastAffectedCategoryIds)[0]
+        : null;
+
+    await loadData();
+    if(categoryToShow){
+        showCategory(categoryToShow);
     }
 }
 
