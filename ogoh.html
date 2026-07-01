@@ -157,6 +157,7 @@ body{
     border-radius:15px;
     overflow:hidden;
     box-shadow:0 2px 10px rgba(0,0,0,.08);
+    position:relative;
 }
 
 .history-card.selected{
@@ -166,6 +167,7 @@ body{
 
 .history-images{
     display:flex;
+    position:relative;
 }
 
 .history-images .img-half{
@@ -202,6 +204,20 @@ body{
     padding:3px 0;
 }
 
+.qty-corner-badge{
+    position:absolute;
+    top:8px;
+    right:8px;
+    background:#f59e0b;
+    color:white;
+    font-size:13px;
+    font-weight:800;
+    padding:4px 10px;
+    border-radius:20px;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);
+    z-index:2;
+}
+
 .history-card .tool-name{
     padding:15px 15px 5px;
     font-weight:600;
@@ -230,7 +246,7 @@ body{
 }
 
 .select-btn{
-    margin:10px 15px 15px;
+    width:100%;
     padding:10px;
     border:none;
     border-radius:8px;
@@ -244,6 +260,38 @@ body{
 
 .select-btn:hover{
     background:#46607f;
+}
+
+.qty-select-controls{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+}
+
+.qty-select-controls button{
+    width:32px;
+    height:32px;
+    border:none;
+    border-radius:8px;
+    background:#e9edf2;
+    font-size:18px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.qty-select-controls span{
+    font-weight:700;
+    min-width:20px;
+    text-align:center;
+}
+
+.qty-select-note{
+    text-align:center;
+    font-size:12px;
+    color:#374B63;
+    font-weight:700;
+    margin-top:6px;
 }
 
 /* ---------- Cart sidebar (баруун тал) ---------- */
@@ -752,58 +800,135 @@ async function loadTakenTools(){
     }
 }
 
-/* ---------- Олон багаж сонгох (буцаах сагс) ---------- */
-// selectedReturnItems: [{ toolId, toolName, categoryId, catalogImageUrl, qty:1, txIds: [id] }]
-// Tool бур ОДОО ТУСДАА transaction (card) — hэн нэг хэрэглэгч авсныг
-// нөгөөгөөс ялгаж харуулахын тулд НЭГТГЭХГҮЙ.
-let takenRecordsCache = []; // [{ id, toolId, toolName, categoryId, catalogImageUrl, pickupPhotoUrl, timestamp }]
+/* ---------- Нэг зэрэг авсан ижил багажийг НЭГТГЭХ ---------- */
+// Нэг хүн "Авах" хуудсан дээр нэг зэрэг авсан бүх ширхэг ижил
+// toolId + borrowBatchId-тай байна (avah.html-ийн confirmCapture
+// доторх borrowBatchId). Тиймээс энэ хоёр талбараар бүлэглэвэл:
+//   - Нэг хүн 4 ширхэг авсан бол -> 1 карт, "x4"
+//   - Өөр хүн (өөр цаг/өөр batch) ижил нэртэй багаж авсан бол -> тусдаа карт
+// Хуучин (borrowBatchId талбаргүй) бичлэгүүдийг тус тусад нь
+// (өөрийн id-г batch болгон ашиглан) харуулна — эвдрэхгүй байх нөхцөл.
+
+let takenRecordsCache = [];  // [{ id, toolId, toolName, categoryId, catalogImageUrl, pickupPhotoUrl, timestamp, borrowBatchId }]
+let groupedTakenCache = [];  // [{ key, toolId, toolName, categoryId, catalogImageUrl, pickupPhotoUrl, timestamp, txIds:[...] }]
+
+// selectedReturnItems: [{ groupKey, toolId, toolName, categoryId, catalogImageUrl, qty, txIds:[...] }]
 let selectedReturnItems = [];
 
-function isTxSelected(txId){
-    return selectedReturnItems.some(i => i.txIds[0] === txId);
+function groupTakenRecords(records){
+    const groups = {};
+    const order = [];
+
+    records.forEach(rec => {
+        const batch = rec.borrowBatchId || rec.id; // хуучин бичлэгт batchId байхгүй бол өөрийн id-г ашиглана
+        const key = rec.toolId + '__' + batch;
+
+        if(!groups[key]){
+            groups[key] = {
+                key,
+                toolId: rec.toolId,
+                toolName: rec.toolName,
+                categoryId: rec.categoryId,
+                catalogImageUrl: rec.catalogImageUrl,
+                pickupPhotoUrl: rec.pickupPhotoUrl,
+                timestamp: rec.timestamp,
+                txIds: []
+            };
+            order.push(key);
+        }
+        groups[key].txIds.push(rec.id);
+    });
+
+    return order.map(key => groups[key]);
 }
 
-function toggleReturnSelect(rec){
-    const idx = selectedReturnItems.findIndex(i => i.txIds[0] === rec.id);
+function isGroupSelected(groupKey){
+    return selectedReturnItems.some(i => i.groupKey === groupKey);
+}
+
+function getSelectedQty(groupKey){
+    const item = selectedReturnItems.find(i => i.groupKey === groupKey);
+    return item ? item.qty : 0;
+}
+
+function toggleReturnSelect(group){
+    const idx = selectedReturnItems.findIndex(i => i.groupKey === group.key);
     if(idx >= 0){
         selectedReturnItems.splice(idx, 1);
     }else{
+        // Сонгоход анхдагчаар БҮХ ширхгийг (тухайн батчийн бүх txId) сагсанд нэмнэ.
+        // Сагсны +/- товчоор хэрэглэгч хэсэгчлэн (жишээ нь 4-с 2-г) буцаах тоог өөрчилж болно.
         selectedReturnItems.push({
-            toolId: rec.toolId,
-            toolName: rec.toolName,
-            categoryId: rec.categoryId,
-            catalogImageUrl: rec.catalogImageUrl,
-            qty: 1,
-            txIds: [rec.id]
+            groupKey: group.key,
+            toolId: group.toolId,
+            toolName: group.toolName,
+            categoryId: group.categoryId,
+            catalogImageUrl: group.catalogImageUrl,
+            qty: group.txIds.length,
+            txIds: group.txIds.slice()
         });
     }
     updateReturnSidebar();
-    refreshTakenCardDisplay(rec.id);
+    refreshTakenCardDisplay(group.key);
 }
 
-function toggleReturnSelectById(txId){
-    const rec = takenRecordsCache.find(r => r.id === txId);
-    if(rec) toggleReturnSelect(rec);
+function toggleReturnSelectByKey(groupKey){
+    const group = groupedTakenCache.find(g => g.key === groupKey);
+    if(group) toggleReturnSelect(group);
 }
 
-function refreshTakenCardDisplay(txId){
-    const card = document.querySelector(`.history-card[data-tx-id="${txId}"]`);
-    if(!card) return;
-    const btnWrap = card.querySelector('.return-btn-wrap');
-    if(!btnWrap) return;
+function changeReturnQty(groupKey, delta){
+    const item = selectedReturnItems.find(i => i.groupKey === groupKey);
+    if(!item) return;
 
-    const selected = isTxSelected(txId);
-    card.classList.toggle('selected', selected);
-    btnWrap.innerHTML = selected
-        ? `<button class="select-btn" style="background:#46607f;" onclick="toggleReturnSelectById('${txId}')">✓ Сонгогдсон</button>`
-        : `<button class="select-btn" onclick="toggleReturnSelectById('${txId}')">Буцаах</button>`;
+    const group = groupedTakenCache.find(g => g.key === groupKey);
+    const maxQty = group ? group.txIds.length : item.qty;
+    const newQty = item.qty + delta;
+
+    if(newQty < 1){
+        const idx = selectedReturnItems.findIndex(i => i.groupKey === groupKey);
+        selectedReturnItems.splice(idx, 1);
+    }else if(newQty <= maxQty){
+        item.qty = newQty;
+        item.txIds = (group ? group.txIds : item.txIds).slice(0, newQty);
+    }
+
+    updateReturnSidebar();
+    refreshTakenCardDisplay(groupKey);
 }
 
-function removeFromReturnCart(txId){
-    const idx = selectedReturnItems.findIndex(i => i.txIds[0] === txId);
+function removeFromReturnCart(groupKey){
+    const idx = selectedReturnItems.findIndex(i => i.groupKey === groupKey);
     if(idx >= 0) selectedReturnItems.splice(idx, 1);
     updateReturnSidebar();
-    refreshTakenCardDisplay(txId);
+    refreshTakenCardDisplay(groupKey);
+}
+
+function refreshTakenCardDisplay(groupKey){
+    const card = document.querySelector(`.history-card[data-group-key="${groupKey}"]`);
+    if(!card) return;
+
+    const group = groupedTakenCache.find(g => g.key === groupKey);
+    const btnWrap = card.querySelector('.return-btn-wrap');
+    if(!btnWrap || !group) return;
+
+    const selected = isGroupSelected(groupKey);
+    card.classList.toggle('selected', selected);
+
+    if(selected){
+        const qty = getSelectedQty(groupKey);
+        const maxQty = group.txIds.length;
+        btnWrap.innerHTML = `
+            <div class="qty-select-controls">
+                <button onclick="changeReturnQty('${groupKey}', -1)">−</button>
+                <span>${qty}</span>
+                <button onclick="changeReturnQty('${groupKey}', 1)" ${qty >= maxQty ? 'disabled' : ''}>+</button>
+            </div>
+            <div class="qty-select-note">${qty} / ${maxQty} буцаахаар сонгосон</div>
+        `;
+    }else{
+        btnWrap.innerHTML = `<button class="select-btn" onclick="toggleReturnSelectByKey('${groupKey}')">Буцаах</button>`;
+    }
 }
 
 /* Баруун талын сагсны панелийг шинэчлэх: хайрцаг (category) тус
@@ -826,7 +951,7 @@ function updateReturnSidebar(){
     sidebar.classList.add('show');
     contentEl.classList.add('shifted');
 
-    const totalQty = selectedReturnItems.length;
+    const totalQty = selectedReturnItems.reduce((sum, item) => sum + item.qty, 0);
     totalCountEl.textContent = `${totalQty} ш`;
 
     const groups = {};
@@ -840,6 +965,7 @@ function updateReturnSidebar(){
 
     Object.keys(groups).forEach(catId => {
         const items = groups[catId];
+        const catTotal = items.reduce((s, i) => s + i.qty, 0);
         const catLabel = catId === '__none__' ? 'Ангилаагүй' : categoryName(catId);
 
         const groupEl = document.createElement('div');
@@ -847,11 +973,10 @@ function updateReturnSidebar(){
 
         const titleEl = document.createElement('div');
         titleEl.className = 'cart-group-title';
-        titleEl.textContent = `🗂️ ${catLabel} — ${items.length} ширхэг`;
+        titleEl.textContent = `🗂️ ${catLabel} — ${catTotal} ширхэг`;
         groupEl.appendChild(titleEl);
 
         items.forEach(item => {
-            const txId = item.txIds[0];
             const row = document.createElement('div');
             row.className = 'cart-item-row';
             row.innerHTML = `
@@ -862,8 +987,13 @@ function updateReturnSidebar(){
                 </div>
                 <div class="cart-item-info">
                     <div class="cart-item-name">${escapeHtml(item.toolName)}</div>
+                    <div class="cart-item-qty-controls">
+                        <button onclick="changeReturnQty('${item.groupKey}', -1)">−</button>
+                        <span>${item.qty}</span>
+                        <button onclick="changeReturnQty('${item.groupKey}', 1)">+</button>
+                        <button class="cart-item-remove" onclick="removeFromReturnCart('${item.groupKey}')">✕</button>
+                    </div>
                 </div>
-                <button class="cart-item-remove" onclick="removeFromReturnCart('${txId}')">✕</button>
             `;
             groupEl.appendChild(row);
         });
@@ -877,39 +1007,53 @@ function renderTaken(records){
     grid.innerHTML = '';
 
     takenRecordsCache = records;
+    groupedTakenCache = groupTakenRecords(records);
 
-    if(records.length === 0){
+    if(groupedTakenCache.length === 0){
         grid.innerHTML = '<p class="empty-msg">Одоогоор авсан багаж байхгүй байна.</p>';
         return;
     }
 
-    records.forEach(rec => {
+    groupedTakenCache.forEach(group => {
         const card = document.createElement('div');
-        const selected = isTxSelected(rec.id);
+        const selected = isGroupSelected(group.key);
         card.className = 'history-card' + (selected ? ' selected' : '');
-        card.setAttribute('data-tx-id', rec.id);
+        card.setAttribute('data-group-key', group.key);
 
-        const dateStr = rec.timestamp ? rec.timestamp.toDate().toLocaleString('mn-MN') : '—';
+        const qty = group.txIds.length;
+        const dateStr = group.timestamp ? group.timestamp.toDate().toLocaleString('mn-MN') : '—';
 
-        const btnWrapHtml = selected
-            ? `<button class="select-btn" style="background:#46607f;" onclick="toggleReturnSelectById('${rec.id}')">✓ Сонгогдсон</button>`
-            : `<button class="select-btn" onclick="toggleReturnSelectById('${rec.id}')">Буцаах</button>`;
+        let btnWrapHtml;
+        if(selected){
+            const selQty = getSelectedQty(group.key);
+            btnWrapHtml = `
+                <div class="qty-select-controls">
+                    <button onclick="changeReturnQty('${group.key}', -1)">−</button>
+                    <span>${selQty}</span>
+                    <button onclick="changeReturnQty('${group.key}', 1)" ${selQty >= qty ? 'disabled' : ''}>+</button>
+                </div>
+                <div class="qty-select-note">${selQty} / ${qty} буцаахаар сонгосон</div>
+            `;
+        }else{
+            btnWrapHtml = `<button class="select-btn" onclick="toggleReturnSelectByKey('${group.key}')">Буцаах</button>`;
+        }
 
         card.innerHTML =
             '<div class="history-images">' +
+                (qty > 1 ? `<div class="qty-corner-badge">× ${qty}</div>` : '') +
                 '<div class="img-half">' +
-                    (rec.catalogImageUrl
-                        ? '<img src="' + rec.catalogImageUrl + '" alt="' + escapeHtml(rec.toolName) + ' - багаж">'
+                    (group.catalogImageUrl
+                        ? '<img src="' + group.catalogImageUrl + '" alt="' + escapeHtml(group.toolName) + ' - багаж">'
                         : '<div class="no-img">🛠️</div>') +
                     '<div class="img-label">Багаж</div>' +
                 '</div>' +
                 '<div class="img-half">' +
-                    '<img src="' + rec.pickupPhotoUrl + '" alt="' + escapeHtml(rec.toolName) + ' - авсан үеийн зураг">' +
+                    '<img src="' + group.pickupPhotoUrl + '" alt="' + escapeHtml(group.toolName) + ' - авсан үеийн зураг">' +
                     '<div class="img-label">Авсан үед</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="tool-name">' + escapeHtml(rec.toolName) + '</div>' +
-            '<div class="tool-meta">' + escapeHtml(categoryName(rec.categoryId)) + ' • ' + dateStr + '</div>' +
+            '<div class="tool-name">' + escapeHtml(group.toolName) + (qty > 1 ? `<span class="qty-badge">${qty} ш</span>` : '') + '</div>' +
+            '<div class="tool-meta">' + escapeHtml(categoryName(group.categoryId)) + ' • ' + dateStr + '</div>' +
             '<div class="return-btn-wrap" style="margin:10px 15px 15px;">' + btnWrapHtml + '</div>';
         grid.appendChild(card);
     });
@@ -986,18 +1130,38 @@ function renderHistory(records){
     const grid = document.getElementById('toolGrid');
     grid.innerHTML = '';
 
-    if(records.length === 0){
+    // Түүхэн жагсаалт дээр ч мөн адил нэг батчаар (нэг удаад буцаагдсан)
+    // авсан ижил багажийг нэгтгэж харуулна: toolId + returnBatchId
+    // (эсвэл олдоогүй бол borrowBatchId, эсвэл өөрийн id).
+    const groups = {};
+    const order = [];
+
+    records.forEach(rec => {
+        const batch = rec.returnBatchId || rec.borrowBatchId || rec.id;
+        const key = rec.toolId + '__' + batch;
+
+        if(!groups[key]){
+            groups[key] = { ...rec, count: 0 };
+            order.push(key);
+        }
+        groups[key].count += 1;
+    });
+
+    const grouped = order.map(key => groups[key]);
+
+    if(grouped.length === 0){
         grid.innerHTML = '<p class="empty-msg">Түүхэн бүртгэл хоосон байна.</p>';
         return;
     }
 
-    records.forEach(rec => {
+    grouped.forEach(rec => {
         const card = document.createElement('div');
         card.className = 'history-card';
         const takenStr = rec.timestamp ? rec.timestamp.toDate().toLocaleString('mn-MN') : '—';
         const returnedStr = rec.returnTimestamp ? rec.returnTimestamp.toDate().toLocaleString('mn-MN') : '—';
         card.innerHTML =
             '<div class="history-images">' +
+                (rec.count > 1 ? `<div class="qty-corner-badge">× ${rec.count}</div>` : '') +
                 '<div class="img-half">' +
                     (rec.catalogImageUrl
                         ? '<img src="' + rec.catalogImageUrl + '" alt="' + escapeHtml(rec.toolName) + ' - багаж">'
@@ -1013,7 +1177,7 @@ function renderHistory(records){
                     '<div class="img-label">Өгсөн</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="tool-name">' + escapeHtml(rec.toolName) + '</div>' +
+            '<div class="tool-name">' + escapeHtml(rec.toolName) + (rec.count > 1 ? `<span class="qty-badge">${rec.count} ш</span>` : '') + '</div>' +
             '<div class="tool-meta">' +
                 escapeHtml(categoryName(rec.categoryId)) + '<br>' +
                 'Авсан: ' + takenStr + '<br>' +
