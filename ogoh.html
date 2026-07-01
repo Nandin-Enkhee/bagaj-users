@@ -609,15 +609,26 @@ body{
     width:100%;
 }
 
-.return-success-line{
+.return-success-box-line{
     background:rgba(255,180,0,.16);
     border:2px solid rgba(255,180,0,.45);
     border-radius:16px;
-    padding:18px 20px;
-    text-align:center;
-    font-size:20px;
+    padding:18px 22px;
+    text-align:left;
+}
+
+.return-success-box-line .box-name{
+    font-size:24px;
     font-weight:800;
     color:#ffd680;
+    margin-bottom:8px;
+}
+
+.return-success-box-line .box-items{
+    font-size:17px;
+    font-weight:600;
+    line-height:1.6;
+    color:white;
 }
 
 .return-success-close{
@@ -1192,7 +1203,7 @@ let cameraStream = null;
 let capturedBlob = null;
 let isSaving = false;
 let currentFacing = "user"; // "user" = урд тал, "environment" = арын тал
-let lastReturnCategories = [];
+let lastReturnGroups = []; // [{ categoryId, items:[{toolName, qty}] }] - буцаасан багажийг хайрцгаар нь бүлэглэсэн
 
 async function openCamera(){
     if(selectedReturnItems.length === 0) return;
@@ -1304,11 +1315,8 @@ async function confirmCapture(){
         // 3. Сонгогдсон БҮХ бичлэгийг боловсруулна (тус бүрийг Firestore
         //    transaction-оор хамгаалсан байдлаар). Мөн аль хайрцгуудад
         //    буцаах ёстойг цуглуулна (том мессежинд ашиглана).
-        const affectedCategoryIds = new Set();
-
         for(const item of selectedReturnItems){
             const toolRef = db.collection("tools").doc(item.toolId);
-            if(item.categoryId) affectedCategoryIds.add(item.categoryId);
 
             for(const txId of item.txIds){
                 const txRef = db.collection("transactions").doc(txId);
@@ -1344,8 +1352,17 @@ async function confirmCapture(){
         });
 
         // Том амжилтын панел дээр харуулах өгөгдлийг хадгална — аль
-        // хайрцгуудад хураах ёстойг харуулна
-        lastReturnCategories = Array.from(affectedCategoryIds);
+        // хайрцагт, ямар багажийг хэдэн ширхэгээр хураах ёстойг харуулна
+        const groupMap = {};
+        selectedReturnItems.forEach(item => {
+            const catId = item.categoryId || '__none__';
+            if(!groupMap[catId]) groupMap[catId] = [];
+            groupMap[catId].push({ toolName: item.toolName, qty: item.qty });
+        });
+        lastReturnGroups = Object.keys(groupMap).map(catId => ({
+            categoryId: catId,
+            items: groupMap[catId]
+        }));
 
         document.getElementById('cameraVideo').style.display = 'none';
         document.getElementById('cameraCanvas').style.display = 'none';
@@ -1365,13 +1382,23 @@ async function confirmCapture(){
     }
 }
 
+/* Хайрцаг тус бүрээр бүлэглэж, "Хайрцаг 1 — Ажилын Бээлий × 4" гэх
+   мэт тод харагдахуйц мөрүүд бүхий HTML үүсгэнэ. Буцаах амжилтын
+   том панелд ашиглагдана. */
 function buildReturnSuccessHtml(){
-    if(lastReturnCategories.length === 0){
-        return '<div class="return-success-line">📦 Багажаа тохирох хайрцагт хураагаарай</div>';
+    if(lastReturnGroups.length === 0){
+        return '<div class="return-success-box-line"><div class="box-name">📦 Багажаа тохирох хайрцагт хураагаарай</div></div>';
     }
-    return lastReturnCategories.map(catId =>
-        `<div class="return-success-line">📦 ${escapeHtml(categoryName(catId))}-д хураагаарай</div>`
-    ).join('');
+    return lastReturnGroups.map(group => {
+        const label = group.categoryId === '__none__' ? 'Ангилаагүй' : categoryName(group.categoryId);
+        const itemLines = group.items.map(i => `${escapeHtml(i.toolName)} × ${i.qty}`).join('<br>');
+        return `
+            <div class="return-success-box-line">
+                <div class="box-name">📦 ${escapeHtml(label)}</div>
+                <div class="box-items">${itemLines}</div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function closeReturnSuccess(){
