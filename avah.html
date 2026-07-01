@@ -722,7 +722,16 @@ async function loadData(){
 
 function categoryName(categoryId){
     const cat = categoriesCache.find(c => c.id === categoryId);
-    return cat ? cat.name : "Тодорхойгүй";
+    return cat ? formatBoxName(cat.name) : "Тодорхойгүй";
+}
+
+/* Хайрцгийн нэр зөвхөн тоо (1, 2, 3...) бол "Хайрцаг 1" гэж
+   харуулна. Тоо биш бол нэрийг нь өөрчлөхгүй. */
+function formatBoxName(name){
+    if(name !== undefined && name !== null && /^\d+$/.test(String(name).trim())){
+        return `Хайрцаг ${String(name).trim()}`;
+    }
+    return name;
 }
 
 function typeName(typeId){
@@ -742,7 +751,7 @@ function renderBoxMenu(){
 
     categoriesCache.forEach(cat => {
         const a = document.createElement('a');
-        a.textContent = cat.name;
+        a.textContent = formatBoxName(cat.name);
         a.onclick = () => showCategory(cat.id);
         wrap.appendChild(a);
     });
@@ -775,7 +784,7 @@ function showCategory(categoryId){
 
     document.getElementById('welcomeCard').style.display = 'none';
     document.getElementById('toolSection').style.display = 'block';
-    document.getElementById('toolSectionTitle').textContent = `🗂️ ${cat.name}`;
+    document.getElementById('toolSectionTitle').textContent = `🗂️ ${formatBoxName(cat.name)}`;
 
     renderToolGrid(items);
 }
