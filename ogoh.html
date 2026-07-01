@@ -75,6 +75,11 @@ body{
     flex:1;
     padding:40px;
     overflow-y:auto;
+    transition:margin-right .3s;
+}
+
+.content.shifted{
+    margin-right:320px;
 }
 
 .search-box{
@@ -204,6 +209,18 @@ body{
     text-align:center;
 }
 
+.qty-badge{
+    display:inline-block;
+    background:#374B63;
+    color:white;
+    font-size:12px;
+    font-weight:700;
+    padding:2px 9px;
+    border-radius:10px;
+    margin-left:6px;
+    vertical-align:middle;
+}
+
 .history-card .tool-meta{
     padding:0 15px 15px;
     font-size:13px;
@@ -229,132 +246,169 @@ body{
     background:#46607f;
 }
 
-.modal-overlay{
-    display:none;
+/* ---------- Cart sidebar (баруун тал) ---------- */
+
+.cart-sidebar{
     position:fixed;
-    top:0;left:0;right:0;bottom:0;
-    background:rgba(0,0,0,.55);
+    top:0;
+    right:0;
+    bottom:0;
+    width:320px;
+    background:white;
+    box-shadow:-4px 0 20px rgba(0,0,0,.12);
+    z-index:800;
+    display:flex;
+    flex-direction:column;
+    transform:translateX(100%);
+    transition:transform .3s ease;
+}
+
+.cart-sidebar.show{
+    transform:translateX(0);
+}
+
+.cart-header{
+    background:#2E445D;
+    color:white;
+    padding:20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-shrink:0;
+}
+
+.cart-header .cart-title{
+    font-size:18px;
+    font-weight:700;
+}
+
+.cart-header .cart-total{
+    background:rgba(255,255,255,.15);
+    padding:6px 14px;
+    border-radius:20px;
+    font-size:14px;
+    font-weight:600;
+}
+
+.cart-sidebar-list{
+    flex:1;
+    overflow-y:auto;
+    padding:16px;
+}
+
+.cart-group{
+    margin-bottom:18px;
+}
+
+.cart-group-title{
+    font-size:14px;
+    font-weight:700;
+    color:#374B63;
+    background:#eef2f7;
+    padding:8px 12px;
+    border-radius:8px;
+    margin-bottom:8px;
+}
+
+.cart-item-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 6px;
+    border-bottom:1px solid #f0f0f0;
+}
+
+.cart-item-row:last-child{
+    border-bottom:none;
+}
+
+.cart-item-img{
+    width:44px;
+    height:44px;
+    border-radius:8px;
+    overflow:hidden;
+    flex-shrink:0;
+    background:#e9edf2;
+    display:flex;
     align-items:center;
     justify-content:center;
-    z-index:1000;
-    padding:20px;
 }
 
-.modal-overlay.show{
-    display:flex;
-}
-
-.modal-box{
-    background:white;
-    border-radius:20px;
-    max-width:700px;
-    width:100%;
-    overflow:hidden;
-    box-shadow:0 20px 50px rgba(0,0,0,.3);
-    display:flex;
-    flex-wrap:wrap;
-}
-
-.modal-img{
-    flex:1 1 280px;
-    min-height:280px;
-    display:flex;
-}
-
-.modal-img .img-half{
-    flex:1;
-    position:relative;
-    background:#e9edf2;
-    overflow:hidden;
-}
-
-.modal-img .img-half img{
+.cart-item-img img{
     width:100%;
     height:100%;
     object-fit:cover;
 }
 
-.modal-img .img-half .no-img{
-    width:100%;
-    height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:48px;
+.cart-item-img span{
+    font-size:18px;
     opacity:.3;
 }
 
-.modal-img .img-half .img-label{
-    position:absolute;
-    bottom:0;left:0;right:0;
-    background:rgba(0,0,0,.55);
-    color:white;
-    font-size:12px;
-    text-align:center;
-    padding:3px 0;
+.cart-item-info{
+    flex:1;
+    min-width:0;
 }
 
-.modal-info{
-    flex:1 1 260px;
-    padding:30px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    position:relative;
-}
-
-.modal-close{
-    position:absolute;
-    top:15px;
-    right:20px;
-    background:none;
-    border:none;
-    font-size:24px;
-    cursor:pointer;
-    color:#888;
-}
-
-.modal-close:hover{
-    color:#333;
-}
-
-.modal-info h2{
+.cart-item-name{
+    font-weight:600;
     color:#2E445D;
-    margin-bottom:15px;
-    font-size:1.8rem;
+    font-size:14px;
+    margin-bottom:6px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
 }
 
-.modal-info .info-row{
-    margin-bottom:12px;
+.cart-item-qty-controls{
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.cart-item-qty-controls button{
+    width:26px;
+    height:26px;
+    border:none;
+    border-radius:6px;
+    background:#e9edf2;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.cart-item-qty-controls span{
+    font-weight:700;
+    min-width:18px;
+    text-align:center;
+    font-size:14px;
+}
+
+.cart-item-remove{
+    margin-left:auto;
+    background:none !important;
+    color:#b03a3a;
     font-size:16px;
-    color:#444;
+    width:auto !important;
 }
 
-.modal-info .info-row b{
-    color:#374B63;
-}
-
-.modal-info .take-btn{
-    margin-top:20px;
+.cart-take-btn{
+    flex-shrink:0;
+    margin:16px;
     padding:16px;
     border:none;
     border-radius:12px;
     background:linear-gradient(135deg,#5D83B3,#4F6E91);
     color:white;
-    font-size:18px;
+    font-size:17px;
     font-weight:700;
     cursor:pointer;
     transition:.3s;
 }
 
-.modal-info .take-btn:hover{
+.cart-take-btn:hover{
     background:linear-gradient(135deg,#6d92c0,#5D83B3);
     transform:translateY(-2px);
-}
-
-.modal-info .take-btn:disabled{
-    background:#ccc;
-    cursor:not-allowed;
 }
 
 .camera-overlay{
@@ -458,6 +512,82 @@ body{
     min-height:20px;
 }
 
+/* Том, харагдахуйц амжилтын панел */
+
+.return-success{
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    color:white;
+    padding:30px 20px;
+    max-width:520px;
+    width:100%;
+}
+
+.return-success.show{
+    display:flex;
+}
+
+.return-success-icon{
+    font-size:72px;
+    margin-bottom:10px;
+    animation:popIn .35s ease;
+}
+
+@keyframes popIn{
+    0%{ transform:scale(.4); opacity:0; }
+    70%{ transform:scale(1.1); opacity:1; }
+    100%{ transform:scale(1); }
+}
+
+.return-success-title{
+    font-size:30px;
+    font-weight:800;
+    margin-bottom:8px;
+}
+
+.return-success-sub{
+    font-size:17px;
+    opacity:.85;
+    margin-bottom:22px;
+}
+
+.return-success-list{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-bottom:28px;
+    width:100%;
+}
+
+.return-success-line{
+    background:rgba(255,255,255,.14);
+    border:2px solid rgba(255,255,255,.25);
+    border-radius:16px;
+    padding:16px 20px;
+    text-align:left;
+    font-size:18px;
+    font-weight:700;
+}
+
+.return-success-close{
+    padding:16px 46px;
+    border:none;
+    border-radius:14px;
+    background:#2e8b57;
+    color:white;
+    font-size:19px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.return-success-close:hover{
+    background:#3aa86a;
+    transform:translateY(-2px);
+}
+
 @media(max-width:768px){
     body{
         flex-direction:column;
@@ -471,14 +601,26 @@ body{
     .content{
         padding:20px;
     }
+    .content.shifted{
+        margin-right:0;
+        padding-bottom:280px;
+    }
     .search-box{
         flex-direction:column;
     }
-    .modal-box{
-        flex-direction:column;
+    .cart-sidebar{
+        top:auto;
+        left:0;
+        right:0;
+        width:100%;
+        height:60vh;
+        max-height:60vh;
+        transform:translateY(100%);
+        box-shadow:0 -4px 20px rgba(0,0,0,.15);
+        border-radius:20px 20px 0 0;
     }
-    .modal-img{
-        flex-direction:row;
+    .cart-sidebar.show{
+        transform:translateY(0);
     }
 }
 
@@ -494,7 +636,7 @@ body{
     <button class="menu-btn" onclick="loadHistory()">📜 Түүх (буцаасан)</button>
 </div>
 
-<div class="content">
+<div class="content" id="mainContent">
 
     <div class="search-box">
         <input type="text" id="searchInput" placeholder="🔍 Багаж хайх...">
@@ -513,33 +655,34 @@ body{
 
 </div>
 
-<!-- Сонгогдсон багажийн floating bar -->
-<div id="returnBar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#374B63; color:white; padding:16px 24px; align-items:center; justify-content:space-between; box-shadow:0 -4px 20px rgba(0,0,0,.2); z-index:500;">
-    <div id="returnCount" style="font-weight:600; font-size:16px;">0 багаж сонгогдсон</div>
-    <button onclick="openCartDetail()" style="padding:12px 28px; border:none; border-radius:10px; background:linear-gradient(135deg,#5D83B3,#4F6E91); color:white; font-size:16px; font-weight:700; cursor:pointer;">📷 Буцаах</button>
-</div>
-
-<div class="modal-overlay" id="detailModal">
-    <div class="modal-box" style="flex-direction:column; max-width:480px;">
-        <div class="modal-info" style="padding:24px;">
-            <button class="modal-close" onclick="closeModal()">✕</button>
-            <h2 style="margin-bottom:16px;">Буцаах багажууд</h2>
-            <div id="cartList" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; margin-bottom:10px;"></div>
-            <button class="take-btn" id="modalActionBtn" onclick="openCamera()">📷 Зураг авч баталгаажуулах</button>
-        </div>
+<!-- Баруун талын сагсны панел -->
+<div class="cart-sidebar" id="cartSidebar">
+    <div class="cart-header">
+        <div class="cart-title">🧰 Буцаах сагс</div>
+        <div class="cart-total" id="cartTotalCount">0 ш</div>
     </div>
+    <div class="cart-sidebar-list" id="cartSidebarList"></div>
+    <button class="cart-take-btn" id="cartTakeBtn" onclick="openCamera()">📷 Зураг авч баталгаажуулах</button>
 </div>
 
 <div class="camera-overlay" id="cameraModal">
     <video id="cameraVideo" autoplay playsinline></video>
     <canvas id="cameraCanvas"></canvas>
     <div class="camera-status" id="cameraStatus">Камер бэлдэж байна...</div>
-    <div class="camera-controls">
+    <div class="camera-controls" id="cameraControls">
         <button id="btnCapture" onclick="captureImage()">📸 Зураг авах</button>
         <button id="btnRetake" onclick="retakeImage()">🔄 Дахин авах</button>
         <button id="btnConfirm" onclick="confirmCapture()">✅ Хадгалах</button>
         <button id="btnSwitchCam" onclick="switchCamera()">🔁 Камер сэлгэх</button>
         <button id="btnCameraClose" onclick="closeCamera()">✕ Хаах</button>
+    </div>
+
+    <div class="return-success" id="returnSuccess">
+        <div class="return-success-icon">✅</div>
+        <div class="return-success-title">Амжилттай буцаагдлаа!</div>
+        <div class="return-success-sub">Буцаасан багажууд:</div>
+        <div class="return-success-list" id="returnSuccessList"></div>
+        <button class="return-success-close" onclick="closeReturnSuccess()">Ойлголоо ✓</button>
     </div>
 </div>
 
@@ -551,7 +694,6 @@ body{
 <script>
 
 let categoriesCache = [];
-let currentSelection = null;
 let currentMode = null;
 
 function escapeHtml(str){
@@ -563,7 +705,16 @@ function escapeHtml(str){
 
 function categoryName(categoryId){
     const cat = categoriesCache.find(c => c.id === categoryId);
-    return cat ? cat.name : "Тодорхойгүй";
+    return cat ? formatBoxName(cat.name) : "Тодорхойгүй";
+}
+
+/* Хайрцгийн нэр зөвхөн тоо (1, 2, 3...) бол "Хайрцаг 1" гэж
+   харуулна. Тоо биш бол нэрийг нь өөрчлөхгүй. */
+function formatBoxName(name){
+    if(name !== undefined && name !== null && /^\d+$/.test(String(name).trim())){
+        return `Хайрцаг ${String(name).trim()}`;
+    }
+    return name;
 }
 
 async function loadCategories(){
@@ -601,102 +752,239 @@ async function loadTakenTools(){
 }
 
 /* ---------- Олон багаж сонгох (буцаах сагс) ---------- */
-// selectedReturnItems: [{ toolId, toolName, categoryId, catalogImageUrl, qty:1, txIds: [id] }]
-// Tool бур ОДОО ТУСДАА transaction (card) — hэн нэг хэрэглэгч авсныг
-// нөгөөгөөс ялгаж харуулахын тулд НЭГТГЭХГҮЙ.
-let selectedReturnItems = [];
 
-function isTxSelected(txId){
-    return selectedReturnItems.some(i => i.txIds[0] === txId);
+// takenRecordsCache: Firestore-оос ирсэн бүх "borrowed" транзакц (тус
+// бүр = 1 ширхэг). groupedTakenCache: ижил toolId-тай транзакцуудыг
+// НЭГ карт болгож нэгтгэсэн жагсаалт — жишээ нь нэг хэрэглэгч нэг
+// багажийг 3 удаа (3 ширхэг) авсан бол нэг карт дээр "× 3" гэж
+// харуулна.
+let takenRecordsCache = [];
+let groupedTakenCache = []; // [{ toolId, toolName, categoryId, catalogImageUrl, records:[...] }]
+
+// selectedReturnItems: хэрэглэгчийн буцаахаар сонгосон багаж тус
+// бүрийн НЭГТГЭСЭН мөр — qty нь хэдэн ширхэг буцааж байгааг,
+// txIds нь яг аль транзакц бичлэгүүдийг "returned" болгохыг заана.
+let selectedReturnItems = []; // [{ toolId, toolName, categoryId, catalogImageUrl, qty, txIds:[...] }]
+
+function buildGroupedTaken(records){
+    const map = {};
+    records.forEach(rec => {
+        if(!map[rec.toolId]){
+            map[rec.toolId] = {
+                toolId: rec.toolId,
+                toolName: rec.toolName,
+                categoryId: rec.categoryId,
+                catalogImageUrl: rec.catalogImageUrl,
+                records: []
+            };
+        }
+        map[rec.toolId].records.push(rec);
+    });
+    return Object.values(map);
 }
 
-function toggleReturnSelect(rec){
-    const idx = selectedReturnItems.findIndex(i => i.txIds[0] === rec.id);
+function isToolSelected(toolId){
+    return selectedReturnItems.some(i => i.toolId === toolId);
+}
+
+function getToolSelectedQty(toolId){
+    const item = selectedReturnItems.find(i => i.toolId === toolId);
+    return item ? item.qty : 0;
+}
+
+function toggleReturnSelectByToolId(toolId){
+    const group = groupedTakenCache.find(g => g.toolId === toolId);
+    if(!group) return;
+
+    const idx = selectedReturnItems.findIndex(i => i.toolId === toolId);
     if(idx >= 0){
         selectedReturnItems.splice(idx, 1);
     }else{
         selectedReturnItems.push({
-            toolId: rec.toolId,
-            toolName: rec.toolName,
-            categoryId: rec.categoryId,
-            catalogImageUrl: rec.catalogImageUrl,
+            toolId: group.toolId,
+            toolName: group.toolName,
+            categoryId: group.categoryId,
+            catalogImageUrl: group.catalogImageUrl,
             qty: 1,
-            txIds: [rec.id]
+            txIds: [group.records[0].id]
         });
     }
-    updateReturnBar();
-    refreshTakenCardDisplay(rec.id);
+
+    updateReturnSidebar();
+    refreshTakenCardDisplay(toolId);
 }
 
-function refreshTakenCardDisplay(txId){
-    const card = document.querySelector(`.history-card[data-tx-id="${txId}"]`);
+function changeReturnQty(toolId, delta){
+    const item = selectedReturnItems.find(i => i.toolId === toolId);
+    if(!item) return;
+
+    const group = groupedTakenCache.find(g => g.toolId === toolId);
+    const maxQty = group ? group.records.length : item.qty;
+
+    const newQty = item.qty + delta;
+
+    if(newQty < 1){
+        const idx = selectedReturnItems.findIndex(i => i.toolId === toolId);
+        selectedReturnItems.splice(idx, 1);
+    }else if(newQty <= maxQty){
+        item.qty = newQty;
+        item.txIds = group.records.slice(0, newQty).map(r => r.id);
+    }
+
+    updateReturnSidebar();
+    refreshTakenCardDisplay(toolId);
+}
+
+function buildReturnBtnWrapHtml(group, selected){
+    if(!selected){
+        return `<button class="select-btn" onclick="toggleReturnSelectByToolId('${group.toolId}')">Буцаах</button>`;
+    }
+    const qty = getToolSelectedQty(group.toolId);
+    return `
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+            <button onclick="changeReturnQty('${group.toolId}', -1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">−</button>
+            <span style="font-weight:700; min-width:20px; text-align:center;">${qty}</span>
+            <button onclick="changeReturnQty('${group.toolId}', 1)" style="width:32px; height:32px; border:none; border-radius:8px; background:#e9edf2; font-size:18px; font-weight:700; cursor:pointer;">+</button>
+        </div>
+    `;
+}
+
+function refreshTakenCardDisplay(toolId){
+    const card = document.querySelector(`.history-card[data-tool-id="${toolId}"]`);
     if(!card) return;
+
+    const group = groupedTakenCache.find(g => g.toolId === toolId);
+    if(!group) return;
+
+    const selected = isToolSelected(toolId);
+    card.classList.toggle('selected', selected);
+
     const btnWrap = card.querySelector('.return-btn-wrap');
     if(!btnWrap) return;
-
-    const selected = isTxSelected(txId);
-    card.classList.toggle('selected', selected);
-    btnWrap.innerHTML = selected
-        ? `<button class="select-btn" style="background:#46607f;" onclick="toggleReturnSelectById('${txId}')">✓ Сонгогдсон</button>`
-        : `<button class="select-btn" onclick="toggleReturnSelectById('${txId}')">Буцаах</button>`;
+    btnWrap.innerHTML = buildReturnBtnWrapHtml(group, selected);
 }
 
-function toggleReturnSelectById(txId){
-    const rec = takenRecordsCache.find(r => r.id === txId);
-    if(rec) toggleReturnSelect(rec);
-}
+/* Баруун талын сагсны панелийг шинэчлэх: хайрцаг (category) тус
+   бүрээр бүлэглэж, тухайн хайрцгаас нийт хэдэн ширхэг буцааж
+   байгааг гарчигт нь харуулна. */
+function updateReturnSidebar(){
+    const sidebar = document.getElementById('cartSidebar');
+    const listEl = document.getElementById('cartSidebarList');
+    const totalCountEl = document.getElementById('cartTotalCount');
+    const contentEl = document.getElementById('mainContent');
 
-function updateReturnBar(){
-    const bar = document.getElementById('returnBar');
-    const countEl = document.getElementById('returnCount');
     if(selectedReturnItems.length === 0){
-        bar.style.display = 'none';
-    }else{
-        bar.style.display = 'flex';
-        countEl.textContent = `${selectedReturnItems.length} багаж сонгогдсон`;
+        sidebar.classList.remove('show');
+        contentEl.classList.remove('shifted');
+        listEl.innerHTML = '';
+        totalCountEl.textContent = '0 ш';
+        return;
     }
+
+    sidebar.classList.add('show');
+    contentEl.classList.add('shifted');
+
+    const totalQty = selectedReturnItems.reduce((sum, item) => sum + item.qty, 0);
+    totalCountEl.textContent = `${totalQty} ш`;
+
+    const groups = {};
+    selectedReturnItems.forEach(item => {
+        const catId = item.categoryId || '__none__';
+        if(!groups[catId]) groups[catId] = [];
+        groups[catId].push(item);
+    });
+
+    listEl.innerHTML = '';
+
+    Object.keys(groups).forEach(catId => {
+        const items = groups[catId];
+        const catTotal = items.reduce((s, i) => s + i.qty, 0);
+        const catLabel = catId === '__none__' ? 'Ангилаагүй' : categoryName(catId);
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'cart-group';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'cart-group-title';
+        titleEl.textContent = `🗂️ ${catLabel} — ${catTotal} ширхэг`;
+        groupEl.appendChild(titleEl);
+
+        items.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'cart-item-row';
+            row.innerHTML = `
+                <div class="cart-item-img">
+                    ${item.catalogImageUrl
+                        ? `<img src="${item.catalogImageUrl}">`
+                        : `<span>🛠️</span>`}
+                </div>
+                <div class="cart-item-info">
+                    <div class="cart-item-name">${escapeHtml(item.toolName)}</div>
+                    <div class="cart-item-qty-controls">
+                        <button onclick="changeReturnQty('${item.toolId}', -1)">−</button>
+                        <span>${item.qty}</span>
+                        <button onclick="changeReturnQty('${item.toolId}', 1)">+</button>
+                        <button class="cart-item-remove" onclick="removeFromReturnCart('${item.toolId}')">✕</button>
+                    </div>
+                </div>
+            `;
+            groupEl.appendChild(row);
+        });
+
+        listEl.appendChild(groupEl);
+    });
 }
 
-let takenRecordsCache = []; // [{ id, toolId, toolName, categoryId, catalogImageUrl, pickupPhotoUrl, timestamp }]
+function removeFromReturnCart(toolId){
+    const idx = selectedReturnItems.findIndex(i => i.toolId === toolId);
+    if(idx >= 0) selectedReturnItems.splice(idx, 1);
+    updateReturnSidebar();
+    refreshTakenCardDisplay(toolId);
+}
 
 function renderTaken(records){
     const grid = document.getElementById('toolGrid');
     grid.innerHTML = '';
 
     takenRecordsCache = records;
+    groupedTakenCache = buildGroupedTaken(records);
 
-    if(records.length === 0){
+    if(groupedTakenCache.length === 0){
         grid.innerHTML = '<p class="empty-msg">Одоогоор авсан багаж байхгүй байна.</p>';
         return;
     }
 
-    records.forEach(rec => {
+    groupedTakenCache.forEach(group => {
         const card = document.createElement('div');
-        const selected = isTxSelected(rec.id);
+        const selected = isToolSelected(group.toolId);
         card.className = 'history-card' + (selected ? ' selected' : '');
-        card.setAttribute('data-tx-id', rec.id);
+        card.setAttribute('data-tool-id', group.toolId);
 
-        const dateStr = rec.timestamp ? rec.timestamp.toDate().toLocaleString('mn-MN') : '—';
+        const totalCount = group.records.length;
+        const latestRec = group.records[0];
+        const dateStr = latestRec.timestamp ? latestRec.timestamp.toDate().toLocaleString('mn-MN') : '—';
 
-        const btnWrapHtml = selected
-            ? `<button class="select-btn" style="background:#46607f;" onclick="toggleReturnSelectById('${rec.id}')">✓ Сонгогдсон</button>`
-            : `<button class="select-btn" onclick="toggleReturnSelectById('${rec.id}')">Буцаах</button>`;
+        const btnWrapHtml = buildReturnBtnWrapHtml(group, selected);
 
         card.innerHTML =
             '<div class="history-images">' +
                 '<div class="img-half">' +
-                    (rec.catalogImageUrl
-                        ? '<img src="' + rec.catalogImageUrl + '" alt="' + escapeHtml(rec.toolName) + ' - багаж">'
+                    (group.catalogImageUrl
+                        ? '<img src="' + group.catalogImageUrl + '" alt="' + escapeHtml(group.toolName) + ' - багаж">'
                         : '<div class="no-img">🛠️</div>') +
                     '<div class="img-label">Багаж</div>' +
                 '</div>' +
                 '<div class="img-half">' +
-                    '<img src="' + rec.pickupPhotoUrl + '" alt="' + escapeHtml(rec.toolName) + ' - авсан үеийн зураг">' +
+                    (latestRec.pickupPhotoUrl
+                        ? '<img src="' + latestRec.pickupPhotoUrl + '" alt="' + escapeHtml(group.toolName) + ' - авсан үеийн зураг">'
+                        : '<div class="no-img">📷</div>') +
                     '<div class="img-label">Авсан үед</div>' +
                 '</div>' +
             '</div>' +
-            '<div class="tool-name">' + escapeHtml(rec.toolName) + '</div>' +
-            '<div class="tool-meta">' + escapeHtml(categoryName(rec.categoryId)) + ' • ' + dateStr + '</div>' +
+            '<div class="tool-name">' + escapeHtml(group.toolName) +
+                (totalCount > 1 ? ' <span class="qty-badge">× ' + totalCount + '</span>' : '') +
+            '</div>' +
+            '<div class="tool-meta">' + escapeHtml(categoryName(group.categoryId)) + ' • Нийт авсан: ' + totalCount + ' ширхэг • ' + dateStr + '</div>' +
             '<div class="return-btn-wrap" style="margin:10px 15px 15px;">' + btnWrapHtml + '</div>';
         grid.appendChild(card);
     });
@@ -810,57 +1098,21 @@ function renderHistory(records){
     });
 }
 
-function openCartDetail(){
-    if(selectedReturnItems.length === 0) return;
-
-    const list = document.getElementById('cartList');
-    list.innerHTML = '';
-
-    selectedReturnItems.forEach(item => {
-        const txId = item.txIds[0];
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex; align-items:center; gap:12px; padding:8px; background:#f4f6f9; border-radius:10px;';
-        row.innerHTML =
-            '<div style="width:48px; height:48px; border-radius:8px; overflow:hidden; flex-shrink:0; background:#e9edf2; display:flex; align-items:center; justify-content:center;">' +
-                (item.catalogImageUrl
-                    ? '<img src="' + item.catalogImageUrl + '" style="width:100%; height:100%; object-fit:cover;">'
-                    : '<span style="font-size:20px; opacity:.3;">🛠️</span>') +
-            '</div>' +
-            '<div style="flex:1;">' +
-                '<div style="font-weight:600; color:#2E445D;">' + escapeHtml(item.toolName) + '</div>' +
-                '<div style="font-size:12px; color:#888;">' + escapeHtml(categoryName(item.categoryId)) + '</div>' +
-            '</div>' +
-            '<button onclick="removeFromReturnCart(\'' + txId + '\')" style="border:none; background:none; color:#b03a3a; font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>';
-        list.appendChild(row);
-    });
-
-    document.getElementById('detailModal').classList.add('show');
-}
-
-function removeFromReturnCart(txId){
-    const idx = selectedReturnItems.findIndex(i => i.txIds[0] === txId);
-    if(idx >= 0) selectedReturnItems.splice(idx, 1);
-    updateReturnBar();
-    refreshTakenCardDisplay(txId);
-    if(selectedReturnItems.length === 0){
-        closeModal();
-    }else{
-        openCartDetail();
-    }
-}
-
-function closeModal(){
-    document.getElementById('detailModal').classList.remove('show');
-}
-
+/* ---------- Camera ---------- */
 let cameraStream = null;
 let capturedBlob = null;
 let isSaving = false;
 let currentFacing = "user"; // "user" = урд тал, "environment" = арын тал
+let lastReturnItems = [];
 
 async function openCamera(){
+    if(selectedReturnItems.length === 0) return;
+
     document.getElementById('cameraModal').classList.add('show');
     document.getElementById('cameraStatus').textContent = "Камер бэлдэж байна...";
+    document.getElementById('cameraStatus').style.display = '';
+    document.getElementById('cameraControls').style.display = '';
+    document.getElementById('returnSuccess').classList.remove('show');
     document.getElementById('btnCapture').style.display = 'inline-block';
     document.getElementById('btnRetake').style.display = 'none';
     document.getElementById('btnConfirm').style.display = 'none';
@@ -961,8 +1213,9 @@ async function confirmCapture(){
         const returnBatchId = 'rb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 
         // 3. Сонгогдсон БҮХ бичлэгийг боловсруулна (тус бүрийг Firestore
-        //    transaction-оор хамгаалсан байдлаар). Tool бүрд QTY ширхэг
-        //    transaction (txIds) байгаа тул, тэдгээрийг бүгдийг боловсруулна.
+        //    transaction-оор хамгаалсан байдлаар). item.qty = item.txIds.length
+        //    тул нэг багажийг хэдэн ширхэг сонгосон бол яг тэр хэмжээгээрээ
+        //    транзакц бичлэгүүд "returned" болно.
         for(const item of selectedReturnItems){
             const toolRef = db.collection("tools").doc(item.toolId);
 
@@ -992,24 +1245,26 @@ async function confirmCapture(){
         }
 
         // 4. БҮХ багаж амжилттай буцаагдсаны дараа ESP32-д зориулсан
-        //    "trigger" бичлэгийг 1 удаа үүсгэнэ — ESP32 энэ document-ийг
-        //    тогтмол шалгаж, шинэ trigger гарвал motor ажиллуулна (буцаах
-        //    үед ч авах үед ашигласан АДИЛХАН door1 motor-ийг ашиглана).
+        //    "trigger" бичлэгийг 1 удаа үүсгэнэ.
         await db.collection("esp32_triggers").doc("door1").set({
             triggered: true,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             toolNames: selectedReturnItems.map(item => `${item.toolName} x${item.qty}`)
         });
 
-        document.getElementById('cameraStatus').textContent = "✅ Амжилттай буцаагдсан!";
+        // Том амжилтын панел дээр харуулах өгөгдлийг хадгална
+        lastReturnItems = selectedReturnItems.map(item => ({
+            toolName: item.toolName,
+            qty: item.qty
+        }));
 
-        setTimeout(() => {
-            closeCamera();
-            closeModal();
-            selectedReturnItems = [];
-            updateReturnBar();
-            loadTakenTools();
-        }, 900);
+        document.getElementById('cameraVideo').style.display = 'none';
+        document.getElementById('cameraCanvas').style.display = 'none';
+        document.getElementById('cameraControls').style.display = 'none';
+        document.getElementById('cameraStatus').style.display = 'none';
+
+        document.getElementById('returnSuccessList').innerHTML = buildReturnSuccessHtml();
+        document.getElementById('returnSuccess').classList.add('show');
 
     }catch(err){
         console.error("Буцаахад алдаа:", err);
@@ -1021,6 +1276,20 @@ async function confirmCapture(){
     }
 }
 
+function buildReturnSuccessHtml(){
+    return lastReturnItems.map(item =>
+        `<div class="return-success-line">🛠️ ${escapeHtml(item.toolName)} × ${item.qty}</div>`
+    ).join('');
+}
+
+async function closeReturnSuccess(){
+    document.getElementById('returnSuccess').classList.remove('show');
+    closeCamera();
+    selectedReturnItems = [];
+    updateReturnSidebar();
+    loadTakenTools();
+}
+
 function closeCamera(){
     if(cameraStream){
         cameraStream.getTracks().forEach(track => track.stop());
@@ -1029,10 +1298,6 @@ function closeCamera(){
     capturedBlob = null;
     document.getElementById('cameraModal').classList.remove('show');
 }
-
-document.getElementById('detailModal').addEventListener('click', (e) => {
-    if(e.target.id === 'detailModal') closeModal();
-});
 
 /* ---------- Auth шалгалт ---------- */
 auth.onAuthStateChanged(user => {
